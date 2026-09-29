@@ -1,0 +1,10 @@
+{
+  "description": "Creates guided screen designs based on a reference view to streamline UI development and enhance design consistency for professionals.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
