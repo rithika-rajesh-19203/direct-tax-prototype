@@ -524,9 +524,9 @@ function DirectTaxSettings({
       </div>
 
       {/* Right Column - Content Area */}
-      <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
+      <div className="flex-1 bg-gray-50 overflow-y-auto">
         {selectedSection === 'direct-tax' && (
-          <div className="space-y-6">
+          <div className="space-y-6 p-6">
             {/* Configure Direct Tax Card */}
             <div className="bg-white border border-gray-200 p-6 rounded-lg">
               <div className="flex items-start gap-4">
@@ -629,7 +629,7 @@ function DirectTaxSettings({
         )}
 
         {selectedSection !== 'direct-tax' && (
-          <div className="bg-white border border-gray-200 p-6 rounded-lg">
+          <div className="bg-white border border-gray-200 p-6 rounded-lg m-6">
             <h2 className="text-base font-semibold text-gray-900">
               {TAX_SECTIONS.find((s) => s.id === selectedSection)?.label}
             </h2>
