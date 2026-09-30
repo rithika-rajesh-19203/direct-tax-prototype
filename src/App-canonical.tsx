@@ -479,76 +479,128 @@ function SetupWizardModal({
   )
 }
 
+// ─── Tax Sections List (Middle Column) ────────────────
+const TAX_SECTIONS = [
+  { id: 'tax-rates', label: 'Tax Rates' },
+  { id: 'tax-exemptions', label: 'Tax Exemptions' },
+  { id: 'tax-authorities', label: 'Tax Authorities' },
+  { id: 'tax-registration', label: 'Tax Registration' },
+  { id: 'tax-settings', label: 'Tax Settings' },
+  { id: 'direct-tax', label: 'Direct Tax', icon: '⚡' },
+  { id: 'tax-automation', label: 'Tax Automation Settings' },
+]
+
 // ─── Main Screen Component ────────────────────────────
 function DirectTaxSettings({
   onOpenSetup,
 }: {
   onOpenSetup: () => void
 }) {
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="bg-white border-b border-gray-200 p-6">
-        <div>
-          <h1 className="text-base font-semibold text-gray-900">Tax Returns Settings</h1>
-          <p className="text-xs text-gray-600 mt-1">
-            Configure direct tax filing, manage regional nexus, and review tax return settings
-          </p>
-        </div>
+  const [selectedSection, setSelectedSection] = useState<string>('direct-tax')
 
-        {/* Tabs */}
-        <div className="flex gap-6 mt-6 border-b border-gray-200 -mx-6 px-6 -mb-6">
-          {TAX_NAV_TABS.map((tab) => (
+  return (
+    <div className="flex h-full gap-0">
+      {/* Middle Column - Section List */}
+      <div className="w-64 border-r border-gray-200 bg-white p-4 overflow-y-auto">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4 px-2">Taxes</h2>
+        <div className="space-y-1">
+          {TAX_SECTIONS.map((section) => (
             <button
-              key={tab.label}
-              className={`py-3 border-b-2 text-xs font-medium transition-colors ${
-                tab.label === 'Tax Returns Settings'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              key={section.id}
+              onClick={() => setSelectedSection(section.id)}
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                selectedSection === section.id
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
-              {tab.label}
-              {tab.badge && (
-                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
-                  {tab.badge}
-                </span>
-              )}
+              <span className="flex items-center gap-2">
+                {section.icon && <span>{section.icon}</span>}
+                {section.label}
+              </span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="px-6 pb-6">
-        <div className="bg-white border border-gray-200 p-6 rounded-lg">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100">
-              <svg viewBox="0 0 24 24" className="w-6 h-6 fill-gray-400">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-gray-900">Configure Direct Tax !</h3>
-              <p className="text-xs text-gray-600 mt-1">
-                Set up automatic direct tax calculation by integrating with Zoho Books or Avalara.
-              </p>
-              <ul className="mt-4 space-y-2">
-                {DIRECT_TAX_CARD_BENEFITS.map((benefit) => (
-                  <li key={benefit} className="flex items-start gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-600" />
-                    <span className="text-xs text-gray-700">{benefit}</span>
-                  </li>
+      {/* Right Column - Content Area */}
+      <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
+        {selectedSection === 'direct-tax' && (
+          <div className="space-y-6">
+            {/* Page Header */}
+            <div className="bg-white border-b border-gray-200 pb-6">
+              <div>
+                <h1 className="text-base font-semibold text-gray-900">Tax Settings</h1>
+                <p className="text-xs text-gray-600 mt-1">
+                  Configure direct tax filing, manage regional nexus, and review tax return settings
+                </p>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex gap-6 mt-6 border-b border-gray-200">
+                {TAX_NAV_TABS.map((tab) => (
+                  <button
+                    key={tab.label}
+                    className={`py-3 border-b-2 text-xs font-medium transition-colors ${
+                      tab.label === 'Tax Returns Settings'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {tab.label}
+                    {tab.badge && (
+                      <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
                 ))}
-              </ul>
+              </div>
             </div>
-            <button
-              onClick={onOpenSetup}
-              className="flex-shrink-0 px-5 py-2.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Set up Direct Tax
-            </button>
+
+            {/* Content */}
+            <div className="bg-white border border-gray-200 p-6 rounded-lg">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                  <svg viewBox="0 0 24 24" className="w-6 h-6 fill-gray-400">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-gray-900">Configure Direct Tax !</h3>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Set up automatic direct tax calculation by integrating with Zoho Books or Avalara.
+                  </p>
+                  <ul className="mt-4 space-y-2">
+                    {DIRECT_TAX_CARD_BENEFITS.map((benefit) => (
+                      <li key={benefit} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-600" />
+                        <span className="text-xs text-gray-700">{benefit}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  onClick={onOpenSetup}
+                  className="flex-shrink-0 px-5 py-2.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Set up Direct Tax
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {selectedSection !== 'direct-tax' && (
+          <div className="bg-white border border-gray-200 p-6 rounded-lg">
+            <h2 className="text-base font-semibold text-gray-900">
+              {TAX_SECTIONS.find((s) => s.id === selectedSection)?.label}
+            </h2>
+            <p className="text-sm text-gray-600 mt-4">
+              This section is coming soon. Select "Direct Tax" to configure your tax settings.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -610,11 +662,9 @@ export default function AppCanonical() {
           </div>
         </div>
 
-        {/* Page Content */}
-        <div className="flex-1 overflow-y-auto bg-gray-50">
-          {appPage === 'overview' && (
-            <DirectTaxSettings onOpenSetup={handleOpenSetup} />
-          )}
+        {/* Page Content - Flex Container for 3-column layout */}
+        <div className="flex-1 overflow-hidden flex">
+          <DirectTaxSettings onOpenSetup={handleOpenSetup} />
         </div>
       </div>
 
