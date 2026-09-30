@@ -527,37 +527,6 @@ function DirectTaxSettings({
       <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
         {selectedSection === 'direct-tax' && (
           <div className="space-y-6">
-            {/* Page Header */}
-            <div className="bg-white border-b border-gray-200 pb-6">
-              <div>
-                <h1 className="text-base font-semibold text-gray-900">Tax Settings</h1>
-                <p className="text-xs text-gray-600 mt-1">
-                  Configure direct tax filing, manage regional nexus, and review tax return settings
-                </p>
-              </div>
-
-              {/* Tabs */}
-              <div className="flex gap-6 mt-6 border-b border-gray-200">
-                {TAX_NAV_TABS.map((tab) => (
-                  <button
-                    key={tab.label}
-                    className={`py-3 border-b-2 text-xs font-medium transition-colors ${
-                      tab.label === 'Tax Returns Settings'
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    {tab.label}
-                    {tab.badge && (
-                      <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Content */}
             <div className="bg-white border border-gray-200 p-6 rounded-lg">
               <div className="flex items-start gap-4">
