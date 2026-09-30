@@ -527,7 +527,7 @@ function DirectTaxSettings({
       <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
         {selectedSection === 'direct-tax' && (
           <div className="space-y-6">
-            {/* Content */}
+            {/* Configure Direct Tax Card */}
             <div className="bg-white border border-gray-200 p-6 rounded-lg">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100">
@@ -555,6 +555,74 @@ function DirectTaxSettings({
                 >
                   Set up Direct Tax
                 </button>
+              </div>
+            </div>
+
+            {/* Step-by-Step Setup Process */}
+            <div className="bg-white border border-gray-200 p-6 rounded-lg">
+              <h3 className="text-base font-semibold text-gray-900 mb-1">Set Up Direct Tax</h3>
+              <p className="text-xs text-gray-600 mb-6">
+                Follow these steps to configure your direct tax filing. Each step builds on the previous one to ensure proper setup.
+              </p>
+
+              <div className="space-y-4">
+                {/* Step 1 */}
+                <div className="flex gap-4">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white">
+                    <span className="text-xs font-semibold text-gray-600">1</span>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <h4 className="text-sm font-medium text-gray-900">Set up your business areas in the tax registration tab</h4>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Define which regions or jurisdictions your business operates in and needs to file taxes.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex gap-4">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white">
+                    <span className="text-xs font-semibold text-gray-600">2</span>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <h4 className="text-sm font-medium text-gray-900">Configure/initiate direct tax</h4>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Set up your direct tax configuration and choose your tax filing integration method.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex gap-4">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white">
+                    <span className="text-xs font-semibold text-gray-600">3</span>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <h4 className="text-sm font-medium text-gray-900">Sign the funding power of attorney</h4>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Authorize your tax agent or filing service to handle direct tax submissions on your behalf.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className="flex gap-4">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white">
+                    <span className="text-xs font-semibold text-gray-600">4</span>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <h4 className="text-sm font-medium text-gray-900">Add the tax forms and nexuses</h4>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Select and configure the tax forms required for each of your business nexus locations.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-900">
+                  Once all steps are complete, your direct tax configuration will be active and you can begin filing automatically.
+                </p>
               </div>
             </div>
           </div>
