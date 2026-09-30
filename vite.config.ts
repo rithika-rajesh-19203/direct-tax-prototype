@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        '@canon': path.resolve(__dirname, '../ZF-Design-Cannon-canon-build-out/src/canon'),
       },
     },
     server: {
