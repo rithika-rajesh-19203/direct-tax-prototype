@@ -1290,7 +1290,12 @@ function DirectTaxSummary({
   onViewSetup: (id: string) => void
 }) {
   const [showDocument, setShowDocument] = useState(false)
+  const [expanded, setExpanded] = useState<string[]>([])
   const signed = fpoaStatus === 'processing'
+  // One table row per nexus card, across every saved setup.
+  const nexusEntries = setups.flatMap((setup) => setup.rows.map((row) => ({ setup, row })))
+  const toggleExpanded = (id: string) =>
+    setExpanded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
   return (
     <div className="space-y-5 p-6">
@@ -1366,7 +1371,7 @@ function DirectTaxSummary({
                 Tax return setups
               </h2>
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums">
-                {setups.length}
+                {nexusEntries.length}
               </span>
             </div>
             <p className="mt-0.5 text-xs text-gray-600">
@@ -1384,7 +1389,7 @@ function DirectTaxSummary({
         <table className="w-full text-left">
           <thead className="border-y border-gray-200 bg-gray-50">
             <tr>
-              {['Primary nexus', 'Nexus regions', 'Tax forms', 'Status'].map((h) => (
+              {['Nexus', 'Tax forms', 'Status'].map((h) => (
                 <th key={h} scope="col" className="whitespace-nowrap px-5 py-2.5 text-xs font-medium text-gray-500">
                   {h}
                 </th>
@@ -1395,65 +1400,100 @@ function DirectTaxSummary({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {setups.map((setup) => {
-              const formCount = setup.rows.reduce((n, r) => n + r.forms.length, 0)
-              const missing = setup.rows.filter((r) => r.forms.length === 0).length
-              const complete = setup.rows.length > 0 && missing === 0
-              const primary = setup.rows[0]
+            {nexusEntries.map(({ setup, row }) => {
+              const key = `${setup.id}:${row.id}`
+              const isOpen = expanded.includes(key)
+              const hasForms = row.forms.length > 0
+              const panelId = `nexus-forms-${key}`
+              const catalog = formsForRegion(row.stateCode)
               return (
-                <tr
-                  key={setup.id}
-                  onClick={() => onViewSetup(setup.id)}
-                  className="group cursor-pointer transition-colors hover:bg-gray-50"
-                >
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 text-xs font-bold text-blue-600">
-                        {primary?.stateCode ?? '—'}
+                <React.Fragment key={key}>
+                  <tr
+                    onClick={() => hasForms && toggleExpanded(key)}
+                    className={`transition-colors ${hasForms ? 'cursor-pointer hover:bg-gray-50' : ''} ${isOpen ? 'bg-gray-50' : ''}`}
+                  >
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        {hasForms ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleExpanded(key)
+                            }}
+                            aria-expanded={isOpen}
+                            aria-controls={panelId}
+                            aria-label={`${isOpen ? 'Hide' : 'Show'} forms for ${row.state}`}
+                            className="-ml-1.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              className={`h-4 w-4 fill-current transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
+                              aria-hidden="true"
+                            >
+                              <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+                            </svg>
+                          </button>
+                        ) : (
+                          <span className="-ml-1.5 h-6 w-6 flex-shrink-0" aria-hidden="true" />
+                        )}
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 text-xs font-bold text-blue-600">
+                          {row.stateCode}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{row.state}</p>
+                          <p className="whitespace-nowrap text-xs text-gray-500">Saved {formatDate(setup.savedAt)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{primary?.state ?? 'No regions'}</p>
-                        <p className="whitespace-nowrap text-xs text-gray-500">Saved {formatDate(setup.savedAt)}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <p className="whitespace-nowrap text-sm text-gray-800 tabular-nums">
-                      {setup.rows.length} region{setup.rows.length !== 1 ? 's' : ''}
-                    </p>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <p className="whitespace-nowrap text-sm text-gray-800 tabular-nums">
-                      {formCount} form{formCount !== 1 ? 's' : ''}
-                    </p>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    {complete ? (
-                      <StatusPill tone="success">Configured</StatusPill>
-                    ) : (
-                      <div>
-                        <StatusPill tone="warning">Incomplete</StatusPill>
-                        <p className="mt-1 whitespace-nowrap text-xs text-gray-500">
-                          {missing} region{missing !== 1 ? 's' : ''} need forms
-                        </p>
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onViewSetup(setup.id)
-                      }}
-                      className={`${LINK} whitespace-nowrap`}
-                    >
-                      View setup
-                      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current transition-transform group-hover:translate-x-0.5" aria-hidden="true">
-                        <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <p className="whitespace-nowrap text-sm text-gray-800 tabular-nums">
+                        {row.forms.length} form{row.forms.length !== 1 ? 's' : ''}
+                      </p>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {hasForms ? (
+                        <StatusPill tone="success">Configured</StatusPill>
+                      ) : (
+                        <StatusPill tone="warning">Needs forms</StatusPill>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onViewSetup(setup.id)
+                        }}
+                        className={`${LINK} whitespace-nowrap`}
+                      >
+                        View setup
+                        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+                          <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+
+                  {/* Accordion: this state's forms, one per row */}
+                  {hasForms && isOpen && (
+                    <tr id={panelId} className="bg-gray-50">
+                      <td colSpan={4} className="px-5 pb-4 pt-0">
+                        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
+                          {row.forms.map((form) => (
+                            <li key={form} className="flex items-center gap-3 px-4 py-2.5">
+                              <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-gray-400" aria-hidden="true">
+                                <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm2 16H8v-2h8v2Zm0-4H8v-2h8v2Zm-3-5V3.5L18.5 9H13Z" />
+                              </svg>
+                              <span className="w-44 flex-shrink-0 text-sm text-gray-800">{form}</span>
+                              <span className="text-xs text-gray-500">
+                                {catalog.find((f) => f.name === form)?.description}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               )
             })}
           </tbody>
