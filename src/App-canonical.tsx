@@ -913,7 +913,10 @@ function SetupWizardPage({
   onNext,
   onSaveFilingSetup,
   onBack,
+  editorMode = null,
 }: {
+  // Set when opened from the Direct Tax summary: a plain editor, not the first-run wizard.
+  editorMode?: 'new' | 'existing' | null
   wizardStep: SetupWizardStep
   fpoaStatus: FpoaStatus
   nexusRows: NexusRow[]
@@ -952,12 +955,20 @@ function SetupWizardPage({
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-base font-semibold text-gray-900">
-                {wizardStep === 1 ? 'Configure tax return' : 'Configure tax return for your business'}
+                {editorMode === 'new'
+                  ? 'Add nexus setup'
+                  : editorMode === 'existing'
+                    ? 'Edit nexus setup'
+                    : wizardStep === 1
+                      ? 'Configure tax return'
+                      : 'Configure tax return for your business'}
               </h3>
               <p className="mt-1 text-xs leading-5 text-gray-600">
-                {wizardStep === 1
-                  ? 'Complete the setup flow to sign the FPOA and configure tax returns for each nexus region.'
-                  : 'Add as many nexus regions as you need and assign eligible forms for each region before moving to the configure nexus screen.'}
+                {editorMode
+                  ? 'Add the nexus regions for this setup and assign the eligible forms for each region.'
+                  : wizardStep === 1
+                    ? 'Complete the setup flow to sign the FPOA and configure tax returns for each nexus region.'
+                    : 'Add as many nexus regions as you need and assign eligible forms for each region before moving to the configure nexus screen.'}
               </p>
             </div>
             <button onClick={onBack} className={LINK}>
@@ -965,7 +976,8 @@ function SetupWizardPage({
             </button>
           </div>
 
-          {/* Steps Indicator */}
+          {/* Steps Indicator — first-run wizard only */}
+          {!editorMode && (
           <div className="mt-5 flex items-center gap-4">
             {[1, 2].map((step) => {
               const active = wizardStep === step
@@ -991,6 +1003,7 @@ function SetupWizardPage({
               )
             })}
           </div>
+          )}
         </div>
 
         {/* Body */}
@@ -1201,7 +1214,7 @@ function SetupWizardPage({
                   onClick={onSaveFilingSetup}
                   className={BTN_PRIMARY}
                 >
-                  Save filing setup
+                  {editorMode ? 'Save setup' : 'Save filing setup'}
                 </button>
               </div>
             </div>
@@ -1670,9 +1683,12 @@ export default function AppCanonical() {
   const [filingSetups, setFilingSetups] = useState<FilingSetup[]>([])
   // Which saved setup the wizard is editing; null means a new one.
   const [editingSetupId, setEditingSetupId] = useState<string | null>(null)
+  // null while the first filing setup goes through the wizard.
+  const [editorMode, setEditorMode] = useState<'new' | 'existing' | null>(null)
 
   const openSetupEditor = (setup: FilingSetup | null) => {
     setEditingSetupId(setup?.id ?? null)
+    setEditorMode(setup ? 'existing' : 'new')
     setNexusRows(setup?.rows ?? DEFAULT_NEXUS_ROWS)
     setQuestionnaire(setup?.questionnaire ?? null)
     setWizardStep(2)
@@ -1757,6 +1773,7 @@ export default function AppCanonical() {
             setupPage={
               appPage === 'wizard' ? (
                 <SetupWizardPage
+                  editorMode={editorMode}
                   wizardStep={wizardStep}
                   fpoaStatus={fpoaStatus}
                   nexusRows={nexusRows}
