@@ -1,6 +1,24 @@
 # Direct Tax Prototype Version History
 
-## v2.0 (Canonical — Current)
+## v3.0 (Direct Tax Flow — Current)
+
+**Date:** 2026-10-01  
+**Branch:** `version/v3`  
+**Tag:** `v3`
+
+**Changes:**
+- Configure Direct Tax empty state: illustration, H1/H2, benefit points, primary CTA
+- Connect to Avalara pop-up redesigned
+- Configure tax return opens in the page instead of a pop-up
+- FPOA: overlay with a "Sign FPOA digitally" link that opens the document in an iframe pop-up; Next is always enabled
+- Optional tax questionnaire in a pop-up, with Autofill for prototyping; suggests forms per nexus and hides once saved or a form is added
+- Add tax forms pop-up with a searchable multi-select dropdown
+- Direct Tax summary after the filing setup is saved: FPOA status and a table of tax return setups (Primary nexus, Nexus regions, Tax forms, Status, Actions)
+- Unified button and link styles; fixed a global CSS rule that overrode Tailwind text sizes on buttons
+
+---
+
+## v2.0 (Canonical)
 
 **Date:** 2026-09-30  
 **Branch:** `version/v2-canonical`  
