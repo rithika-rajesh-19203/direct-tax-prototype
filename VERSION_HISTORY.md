@@ -14,6 +14,7 @@ This file tracks what has changed in the prototype and what is planned next.
 
 **Status:** in progress, not yet released
 **In the app:** "v2.0 · In progress" in the version dropdown
+**Public link:** https://rithika-rajesh-19203.github.io/direct-tax-prototype/ (published Oct 5, 2026, with the version dropdown; `?v=v1.0` opens a specific version)
 
 - **Smaller Configure Direct Return Filing card**, so the setup steps stand out:
   - The card is one compact row: a smaller icon, the title and subtitle, a **Learn more** link and the **Set up Direct Return Filing** button.
@@ -31,7 +32,6 @@ This file tracks what has changed in the prototype and what is planned next.
 
 | # | Change | Notes |
 |---|--------|-------|
-| 1 | Publish v1.0 to the public URL | The public link still shows an earlier build. |
 | 2 | Confirm automatic FPOA completion | The page listens for Adobe Acrobat Sign's "signed" event. This hasn't been tested end to end; until it is, users confirm with "I've signed the document". |
 | 3 | Show the real signed FPOA on later visits | Needs Adobe Acrobat Sign API access to fetch the signed agreement. Today, a later visit shows a note that Adobe emailed the signed copy. |
 | 4 | Keep data after a page reload | Registrations, tax forms and FPOA status reset on reload. |
