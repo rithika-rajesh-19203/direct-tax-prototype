@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { NAV_TREE, TAX_NAV_TABS } from './app/data/navigation'
+// Frozen snapshot of v1.0 (2026-10-05). Do not edit: new work goes in src/App-canonical.tsx.
+import { NAV_TREE, TAX_NAV_TABS } from '../app/data/navigation'
 
 /**
  * Canonical version of the Direct Return Filing Settings app.
@@ -1949,7 +1950,6 @@ function DirectTaxSettings({
   selectedSection: string
   onSelectSection: (id: string) => void
 }) {
-  const [showDetails, setShowDetails] = useState(false)
 
   return (
     <div className="flex h-full flex-1 min-w-0 gap-0">
@@ -1982,61 +1982,38 @@ function DirectTaxSettings({
 
         {selectedSection === 'direct-tax' && !setupPage && (
           <div className="space-y-6 p-6">
-            {/* Configure Direct Return Filing — compact; details on demand so the steps lead */}
+            {/* Configure Direct Tax */}
             <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-              <div className="flex items-center gap-3 px-5 py-3.5">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-blue-600" strokeWidth="1.75" strokeLinejoin="round" aria-hidden="true">
+              {/* Header */}
+              <div className="flex items-center gap-4 border-b border-gray-200 px-6 py-5">
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-blue-600" strokeWidth="1.75" strokeLinejoin="round" aria-hidden="true">
                     <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />
                   </svg>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-base font-semibold text-gray-900">Configure Direct Return Filing</h1>
-                  <h2 className="text-xs font-normal text-gray-600">
+                  <h1 className="text-lg font-semibold text-gray-900">Configure Direct Return Filing</h1>
+                  <h2 className="mt-0.5 text-sm font-normal text-gray-600">
                     Set up automatic direct tax calculation by integrating with Zoho Books or Avalara.
                   </h2>
                 </div>
-                <button
-                  onClick={() => setShowDetails((v) => !v)}
-                  aria-expanded={showDetails}
-                  aria-controls="direct-tax-details"
-                  className={`${LINK_SM} min-w-[5.5rem] justify-end whitespace-nowrap`}
-                >
-                  {showDetails ? 'Hide details' : 'Learn more'}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className={`h-3.5 w-3.5 fill-current transition-transform duration-200 ${showDetails ? 'rotate-180' : ''}`}
-                    aria-hidden="true"
-                  >
-                    <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
-                  </svg>
-                </button>
                 <button onClick={onOpenSetup} className={BTN_PRIMARY}>
                   Set up Direct Return Filing
                 </button>
               </div>
 
-              {showDetails && (
-                <div
-                  id="direct-tax-details"
-                  className="grid items-start gap-x-10 gap-y-6 border-t border-gray-200 bg-gray-50/60 py-5 pl-5 pr-5 sm:pl-[4.25rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]"
-                >
-                  <div>
-                    <p className="border-b border-gray-200 pb-2.5 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      What you get
-                    </p>
-                    <ul className="mt-3 space-y-2.5">
-                      {DIRECT_TAX_CARD_BENEFITS.map((benefit) => (
-                        <li key={benefit} className="flex items-start gap-2.5">
-                          <span className="mt-[7px] h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
-                          <span className="text-sm leading-5 text-gray-800">{benefit}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <TaxCalculationAccordion />
-                </div>
-              )}
+              {/* Body */}
+              <div className="grid gap-8 px-6 py-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+                <ul className="space-y-3">
+                  {DIRECT_TAX_CARD_BENEFITS.map((benefit) => (
+                    <li key={benefit} className="flex items-start gap-3">
+                      <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
+                      <span className="text-sm leading-6 text-gray-800">{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
+                <TaxCalculationAccordion />
+              </div>
             </div>
 
             {/* Setup progress */}

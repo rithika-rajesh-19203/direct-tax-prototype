@@ -3,15 +3,27 @@
 This file tracks what has changed in the prototype and what is planned next.
 
 **How it's maintained**
-- Every set of changes is added under **Unreleased** as it's made.
-- When a set is ready to share, it becomes the next version (v1.1, v1.2 … or v2.0 for a larger redesign), with a date, a git tag and a commit.
-- Ideas and requests that haven't been built yet go under **Planned**. Items move from Planned to Unreleased when work starts.
+- Every change is added under the version in progress (currently **v2.0**) as it's made.
+- When the version in progress is ready, it's released with a date, a git tag and a commit, and the next version starts.
+- Each released version is also frozen as a copy in `src/versions/` and listed in `src/versions/registry.ts`, so it can be opened from the version dropdown in the app.
+- Ideas and requests that haven't been built yet go under **Planned**. Items move from Planned to the version in progress when work starts.
 
 ---
 
-## Unreleased
+## v2.0 — in progress
 
-_No changes since v1.0._
+**Status:** in progress, not yet released
+**In the app:** "v2.0 · In progress" in the version dropdown
+
+- **Smaller Configure Direct Return Filing card**, so the setup steps stand out:
+  - The card is one compact row: a smaller icon, the title and subtitle, a **Learn more** link and the **Set up Direct Return Filing** button.
+  - The benefit points and **How your tax is calculated** are hidden behind **Learn more**, collapsed by default.
+  - **Set up Direct Return Filing** stays the primary (blue) button.
+  - The opened details are lined up with the card title on a light grey panel, with matching **What you get** and **How your tax is calculated** column headings and even spacing. Learn more / Hide details keeps the same width, so the header doesn't shift.
+- **Version switcher** in the top bar, next to Help: a dropdown listing every version (newest first) with its date and summary. Picking one loads that version with fresh data. The choice is remembered and added to the URL (for example `?v=v1.0`), so a specific version can be shared.
+  - "v2.0" is the current work; each released version is a frozen copy in `src/versions/`.
+  - Also lists **Public build (Oct 1, 2026)**: the version on https://rithika-rajesh-19203.github.io/direct-tax-prototype/ (commit `c7aace7`), frozen in `src/versions/public-2026-10-01.tsx`.
+  - Also lists **Onslate prototype (Sep 29, 2026)**: an archived copy of https://direct-tax-prototype-mdyrqkyj.onslate.in/. That site doesn't allow embedding, so its published build is kept in `public/versions/onslate-2026-09-29/` and shown under a thin "Archived version" bar with an **Open original** link.
 
 ---
 
@@ -84,5 +96,7 @@ These are kept in git for reference. They are earlier stages of the same work an
 | First prototype | branch `version/v1-current`, tag `v1-current-snapshot` | Original single-file app with the setup wizard |
 | Design system refactor | branch `version/v2-canonical` | UI rebuilt on the ZF Design Cannon structure |
 | First public build | tag `v3` (commit `f96ee76`) | First version published to the public URL |
+| Onslate prototype | `public/versions/onslate-2026-09-29/` (build copied from the site, built Sep 29, 2026) | Earlier prototype at direct-tax-prototype-mdyrqkyj.onslate.in; selectable from the version dropdown |
+| Public build | commit `c7aace7`, in the app as **Public build** | What the public URL shows today; selectable from the version dropdown |
 
 To open any of them: `git checkout <git ref>`.

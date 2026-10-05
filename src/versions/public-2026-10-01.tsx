@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { NAV_TREE, TAX_NAV_TABS } from './app/data/navigation'
+import React, { useState, useRef } from 'react'
+// Frozen snapshot of the build published at https://rithika-rajesh-19203.github.io/direct-tax-prototype/
+// (commit c7aace7, 2026-10-01). Only change: the header slot for the version switcher.
+import { NAV_TREE, TAX_NAV_TABS } from '../app/data/navigation'
 
 /**
- * Canonical version of the Direct Return Filing Settings app.
+ * Canonical version of the Direct Tax Settings app.
  * Complete workflow replication from deployed v1.0 with:
  * - Avalara connection modal
  * - FPOA signing wizard (2-step: Sign FPOA → Tax Return)
@@ -10,8 +12,8 @@ import { NAV_TREE, TAX_NAV_TABS } from './app/data/navigation'
  * - All states, transitions, and interactions
  */
 
-type AppPage = 'overview' | 'active' | 'editor'
-type DirectTaxSegment = 'fpoa' | 'forms'
+type AppPage = 'overview' | 'wizard' | 'summary'
+type SetupWizardStep = 1 | 2
 type FpoaStatus = 'idle' | 'signing' | 'processing'
 
 interface FilingSetup {
@@ -26,15 +28,6 @@ interface NexusRow {
   state: string
   stateCode: string
   forms: string[]
-  registeredOn?: string
-}
-
-interface TaxRegistration {
-  id: string
-  code: string
-  name: string
-  registeredOn: string // YYYY-MM-DD
-  jurisdictions: { name: string; registeredOn: string }[]
 }
 
 const DIRECT_TAX_CARD_BENEFITS = [
@@ -46,39 +39,12 @@ const DIRECT_TAX_CARD_BENEFITS = [
 ]
 
 // Regions already set up in the Tax Registration tab.
-type Region = { code: string; name: string }
-
-const US_STATES: Region[] = [
-  ['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'], ['CA', 'California'],
-  ['CO', 'Colorado'], ['CT', 'Connecticut'], ['DE', 'Delaware'], ['DC', 'District of Columbia'], ['FL', 'Florida'],
-  ['GA', 'Georgia'], ['HI', 'Hawaii'], ['ID', 'Idaho'], ['IL', 'Illinois'], ['IN', 'Indiana'],
-  ['IA', 'Iowa'], ['KS', 'Kansas'], ['KY', 'Kentucky'], ['LA', 'Louisiana'], ['ME', 'Maine'],
-  ['MD', 'Maryland'], ['MA', 'Massachusetts'], ['MI', 'Michigan'], ['MN', 'Minnesota'], ['MS', 'Mississippi'],
-  ['MO', 'Missouri'], ['MT', 'Montana'], ['NE', 'Nebraska'], ['NV', 'Nevada'], ['NH', 'New Hampshire'],
-  ['NJ', 'New Jersey'], ['NM', 'New Mexico'], ['NY', 'New York'], ['NC', 'North Carolina'], ['ND', 'North Dakota'],
-  ['OH', 'Ohio'], ['OK', 'Oklahoma'], ['OR', 'Oregon'], ['PA', 'Pennsylvania'], ['RI', 'Rhode Island'],
-  ['SC', 'South Carolina'], ['SD', 'South Dakota'], ['TN', 'Tennessee'], ['TX', 'Texas'], ['UT', 'Utah'],
-  ['VT', 'Vermont'], ['VA', 'Virginia'], ['WA', 'Washington'], ['WV', 'West Virginia'], ['WI', 'Wisconsin'],
-  ['WY', 'Wyoming'],
-].map(([code, name]) => ({ code, name }))
-
-// Sample local jurisdictions for the prototype.
-const LOCAL_JURISDICTIONS: Record<string, string[]> = {
-  AL: ['ABBEVILLE PJ (AL - Special)', 'BIRMINGHAM (AL - City)', 'JEFFERSON COUNTY (AL - County)', 'MONTGOMERY (AL - City)'],
-  AZ: ['PHOENIX (AZ - City)', 'TUCSON (AZ - City)', 'MARICOPA COUNTY (AZ - County)'],
-  CA: ['LOS ANGELES COUNTY (CA - County)', 'SAN FRANCISCO (CA - City)', 'SAN DIEGO COUNTY (CA - County)'],
-  CO: ['DENVER (CO - City)', 'BOULDER (CO - City)', 'EL PASO COUNTY (CO - County)'],
-  NY: ['NEW YORK CITY (NY - City)', 'NASSAU COUNTY (NY - County)', 'ALBANY COUNTY (NY - County)'],
-}
-const jurisdictionsFor = (code: string) =>
-  LOCAL_JURISDICTIONS[code] ?? [`${code} CITY DISTRICT (${code} - City)`, `${code} COUNTY DISTRICT (${code} - County)`]
-
-// "2026-09-01" → "01 Sep 2026"
-const formatIsoDate = (iso: string) =>
-  iso
-    ? new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    : ''
-const todayIso = () => new Date().toISOString().slice(0, 10)
+const REGISTERED_REGIONS = [
+  { code: 'AL', name: 'Alabama' },
+  { code: 'AZ', name: 'Arizona' },
+  { code: 'CA', name: 'California' },
+  { code: 'NY', name: 'New York' },
+]
 
 type EntityType = 'corporation' | 'llc' | 'partnership' | 'sole-proprietorship'
 
@@ -98,14 +64,13 @@ const EMPTY_ANSWERS: QuestionnaireAnswers = {
   fiscalYearEnd: '',
 }
 
-// Autofill: nexus in every registered state, a physical presence in the first two.
-const sampleAnswers = (regions: Region[]): QuestionnaireAnswers => ({
-  nexus: regions.map((r) => r.code),
+const SAMPLE_ANSWERS: QuestionnaireAnswers = {
+  nexus: ['AL', 'AZ', 'CA', 'NY'],
   entity: 'corporation',
-  presence: regions.slice(0, 2).map((r) => r.code),
+  presence: ['CA', 'NY'],
   receipts: 'over-1m',
   fiscalYearEnd: 'December',
-})
+}
 
 const ENTITY_OPTIONS: { value: EntityType; label: string; hint: string }[] = [
   { value: 'corporation', label: 'Corporation', hint: 'C corp or S corp' },
@@ -134,24 +99,6 @@ const ENTITY_FORMS: Record<EntityType, Record<string, string[]>> = {
 }
 const WITHHOLDING_FORMS: Record<string, string> = { AL: 'AL A-1', AZ: 'AZ A1-QRT', CA: 'CA DE 9', NY: 'NY-45' }
 const ESTIMATED_FORMS: Record<string, string> = { AL: 'AL Form 2220AL', AZ: 'AZ Form 120ES', CA: 'CA Form 100-ES', NY: 'NY CT-400' }
-ENTITY_FORMS.corporation.CO = ['CO Form 112']
-ENTITY_FORMS.llc.CO = ['CO Form 106']
-ENTITY_FORMS.partnership.CO = ['CO Form 106']
-ENTITY_FORMS['sole-proprietorship'].CO = ['CO Form 104']
-WITHHOLDING_FORMS.CO = 'CO DR 1094'
-ESTIMATED_FORMS.CO = 'CO Form 112EP'
-
-// States without a hand-written mapping get placeholder form names.
-const GENERIC_ENTITY_FORM: Record<EntityType, string> = {
-  corporation: 'Form CIT',
-  llc: 'Form LLC',
-  partnership: 'Form PTE',
-  'sole-proprietorship': 'Form IIT',
-}
-const entityFormsFor = (entity: EntityType, code: string) =>
-  ENTITY_FORMS[entity][code] ?? [`${code} ${GENERIC_ENTITY_FORM[entity]}`]
-const withholdingFormFor = (code: string) => WITHHOLDING_FORMS[code] ?? `${code} Form WH`
-const estimatedFormFor = (code: string) => ESTIMATED_FORMS[code] ?? `${code} Form EST`
 
 // Every form the prototype knows for a region — what "Add form" offers.
 interface TaxForm {
@@ -171,24 +118,35 @@ function formsForRegion(code: string): TaxForm[] {
   const add = (name: string, description: string) => {
     if (!forms.some((f) => f.name === name)) forms.push({ name, description })
   }
-  for (const entity of Object.keys(ENTITY_FORMS) as EntityType[]) {
-    for (const name of entityFormsFor(entity, code)) {
+  for (const [entity, byRegion] of Object.entries(ENTITY_FORMS) as [EntityType, Record<string, string[]>][]) {
+    for (const name of byRegion[code] ?? []) {
       add(name, name.includes('BPT') ? 'Business privilege tax return' : ENTITY_FORM_LABEL[entity])
     }
   }
-  add(withholdingFormFor(code), 'Employer withholding return')
-  add(estimatedFormFor(code), 'Estimated tax payment')
+  add(WITHHOLDING_FORMS[code], 'Employer withholding return')
+  add(ESTIMATED_FORMS[code], 'Estimated tax payment')
   return forms
 }
 
-// Forms the questionnaire suggests for one state.
-function suggestFormsFor(answers: QuestionnaireAnswers, code: string): string[] {
-  return [
-    ...(answers.entity ? entityFormsFor(answers.entity, code) : []),
-    ...(answers.presence.includes(code) ? [withholdingFormFor(code)] : []),
-    ...(answers.receipts === 'over-1m' ? [estimatedFormFor(code)] : []),
-  ]
+function suggestNexusRows(answers: QuestionnaireAnswers): NexusRow[] {
+  return REGISTERED_REGIONS.filter((r) => answers.nexus.includes(r.code)).map((r) => ({
+    id: r.code,
+    state: r.name,
+    stateCode: r.code,
+    forms: [
+      ...(answers.entity ? ENTITY_FORMS[answers.entity][r.code] : []),
+      ...(answers.presence.includes(r.code) ? [WITHHOLDING_FORMS[r.code]] : []),
+      ...(answers.receipts === 'over-1m' ? [ESTIMATED_FORMS[r.code]] : []),
+    ],
+  }))
 }
+
+const DEFAULT_NEXUS_ROWS: NexusRow[] = REGISTERED_REGIONS.map((r) => ({
+  id: r.code,
+  state: r.name,
+  stateCode: r.code,
+  forms: [],
+}))
 
 // ─── Shared control styles ────────────────────────────
 // One size for every CTA (32px, 14px medium) and one style for every link.
@@ -201,10 +159,6 @@ const BTN_ICON =
   'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600'
 const LINK =
   'inline-flex flex-shrink-0 items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline'
-// Compact buttons for small cards such as the setup checklist tiles.
-const BTN_XS_BASE =
-  'inline-flex h-7 flex-shrink-0 items-center gap-1 rounded-md px-2.5 text-xs font-medium transition-colors'
-const BTN_XS_PRIMARY = `${BTN_XS_BASE} bg-blue-600 text-white hover:bg-blue-700`
 const LINK_SM =
   'inline-flex flex-shrink-0 items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline'
 
@@ -310,7 +264,7 @@ function AvalaraModal({
             </div>
             <ul className="mt-2.5 ml-6 space-y-2 list-disc marker:text-amber-500">
               <li className="text-sm leading-5 text-gray-700">
-                Zoho Books supports direct return filing through its integration with Avalara, our certified service provider.
+                Zoho Books supports direct tax filing through its integration with Avalara, our certified service provider.
               </li>
               <li className="text-sm leading-5 text-gray-700">
                 Avalara handles tax compliance and filing on your behalf so you can focus on your business.
@@ -359,11 +313,108 @@ function AvalaraModal({
   )
 }
 
-// ─── FPOA Document ────────────────────────────────────
-// The real FPOA, served and signed through an Adobe Acrobat Sign web form.
-const FPOA_ESIGN_URL =
-  'https://secure.na1.echosign.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhBH-Mal45Altk9ZpKjo1B8NOnUohmFSu5uEpSq5mJoSsMUeQsbA0xUNvztdZHXKaaU*'
-const ESIGN_ORIGIN = /^https:\/\/[\w.-]+\.(echosign|adobesign)\.com$/
+// ─── FPOA Document Modal ──────────────────────────────
+const FPOA_DOCUMENT_HTML = `<!doctype html>
+<html><head><meta charset="utf-8" /><style>
+  body { margin: 0; background: #eef1f6; font-family: Inter, "Segoe UI", sans-serif; color: #1d2736; }
+  .page { max-width: 720px; margin: 24px auto; background: #fff; padding: 48px 56px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #66718a; margin: 0 0 24px; }
+  h2 { font-size: 13px; margin: 24px 0 8px; text-transform: uppercase; letter-spacing: .04em; color: #66718a; }
+  p, li { font-size: 13px; line-height: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td { border: 1px solid #e7ebf2; padding: 8px 10px; }
+  td:first-child { width: 40%; color: #66718a; background: #f8fafc; }
+  .sign { margin-top: 32px; border: 1px dashed #b8c2d3; border-radius: 6px; padding: 16px; font-size: 12px; color: #66718a; height: 64px; }
+</style></head><body><div class="page">
+  <h1>Form POA — Funding Power of Attorney</h1>
+  <p class="sub">Authorization for direct tax filing setup · Page 1 of 1</p>
+  <h2>Taxpayer</h2>
+  <table>
+    <tr><td>Legal name</td><td>Zylker Inc.</td></tr>
+    <tr><td>Country</td><td>Canada</td></tr>
+    <tr><td>Tax identification number</td><td>XX-XXXXXXX</td></tr>
+  </table>
+  <h2>Authorized representative</h2>
+  <table>
+    <tr><td>Service provider</td><td>Avalara, Inc.</td></tr>
+    <tr><td>Scope</td><td>Direct tax return preparation, filing and remittance</td></tr>
+  </table>
+  <h2>Authorization</h2>
+  <p>The taxpayer authorizes the representative named above to file direct tax returns and to debit the taxpayer's designated account for the tax amounts due, on the taxpayer's behalf, for each nexus region configured in Zoho Books.</p>
+  <ul>
+    <li>This authorization remains in effect until revoked in writing.</li>
+    <li>The taxpayer remains responsible for the accuracy of the information provided.</li>
+  </ul>
+  <div class="sign">Digital signature</div>
+</div></body></html>`
+
+function FpoaDocumentModal({
+  signed,
+  onSign,
+  onClose,
+}: {
+  signed: boolean
+  onSign: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fpoa-doc-title"
+        className="bg-white w-full max-w-4xl h-[88vh] overflow-hidden border border-gray-200 rounded-xl shadow-2xl flex flex-col"
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h2 id="fpoa-doc-title" className="text-base font-semibold text-gray-900 truncate">
+              FPOA_Zylker_Canada.pdf
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {signed ? 'Signed document' : 'Review the document, then sign it digitally.'}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className={`-mr-2 ${BTN_ICON}`}
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Document */}
+        <iframe
+          title="FPOA document"
+          srcDoc={FPOA_DOCUMENT_HTML}
+          className="flex-1 w-full border-0 bg-gray-100"
+        />
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 px-6 py-4 flex items-center gap-2 bg-gray-50">
+          {!signed && (
+            <button
+              onClick={onSign}
+              className={BTN_PRIMARY}
+            >
+              Sign document
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className={BTN_SECONDARY}
+          >
+            {signed ? 'Close' : 'Cancel'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── Questionnaire Modal ──────────────────────────────
 // A selectable tile: the native input stays for keyboard and screen readers,
@@ -417,12 +468,10 @@ function QuestionCard({
 }
 
 function QuestionnaireModal({
-  regions,
   initialAnswers,
   onSubmit,
   onClose,
 }: {
-  regions: Region[]
   initialAnswers: QuestionnaireAnswers
   onSubmit: (answers: QuestionnaireAnswers) => void
   onClose: () => void
@@ -439,7 +488,7 @@ function QuestionnaireModal({
         : { ...prev, presence: list }
     })
 
-  const nexusRegions = regions.filter((r) => answers.nexus.includes(r.code))
+  const nexusRegions = REGISTERED_REGIONS.filter((r) => answers.nexus.includes(r.code))
   const answered = [
     answers.nexus.length > 0,
     answers.entity !== '',
@@ -505,7 +554,7 @@ function QuestionnaireModal({
             <path d="M7.5 5.6 10 7 8.6 4.5 10 2 7.5 3.4 5 2l1.4 2.5L5 7l2.5-1.4Zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14l-2.5 1.4ZM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5L22 2Zm-7.63 5.29a.996.996 0 0 0-1.41 0L1.29 18.96a.996.996 0 0 0 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05a.996.996 0 0 0 0-1.41l-2.33-2.35Zm-1.03 5.49-2.12-2.12 2.44-2.44 2.12 2.12-2.44 2.44Z" />
           </svg>
           <p className="flex-1 text-xs text-blue-900">Prototyping? Fill in sample answers in one click.</p>
-          <button onClick={() => setAnswers(sampleAnswers(regions))} className={LINK_SM}>
+          <button onClick={() => setAnswers(SAMPLE_ANSWERS)} className={LINK_SM}>
             Autofill
           </button>
         </div>
@@ -520,7 +569,7 @@ function QuestionnaireModal({
             answered={answered[0]}
           >
             <div className="grid grid-cols-2 gap-2">
-              {regions.map((r) => (
+              {REGISTERED_REGIONS.map((r) => (
                 <label key={r.code} className={TILE}>
                   <input
                     type="checkbox"
@@ -854,24 +903,34 @@ function AddFormModal({
   )
 }
 
-// ─── Nexus Setup Editor ───────────────────────────────
-function NexusSetupEditor({
+// ─── FPOA Wizard (in-page) ────────────────────────────
+function SetupWizardPage({
+  wizardStep,
+  fpoaStatus,
   nexusRows,
   questionnaire,
   onQuestionnaireSubmit,
   onNexusRowsChange,
+  onFpoaSign,
+  onNext,
   onSaveFilingSetup,
   onBack,
-  editorMode,
+  editorMode = null,
 }: {
-  editorMode: 'new' | 'existing'
+  // Set when opened from the Direct Tax summary: a plain editor, not the first-run wizard.
+  editorMode?: 'new' | 'existing' | null
+  wizardStep: SetupWizardStep
+  fpoaStatus: FpoaStatus
   nexusRows: NexusRow[]
   questionnaire: QuestionnaireAnswers | null
   onQuestionnaireSubmit: (answers: QuestionnaireAnswers) => void
   onNexusRowsChange: (rows: NexusRow[]) => void
+  onFpoaSign: () => void
+  onNext: () => void
   onSaveFilingSetup: () => void
   onBack: () => void
 }) {
+  const [showDocument, setShowDocument] = useState(false)
   const [showQuestionnaire, setShowQuestionnaire] = useState(false)
   const [addingFormFor, setAddingFormFor] = useState<string | null>(null)
   const [formAdded, setFormAdded] = useState(false)
@@ -885,8 +944,11 @@ function NexusSetupEditor({
     setAddingFormFor(null)
   }
 
+  const removeRow = (rowId: string) => onNexusRowsChange(nexusRows.filter((r) => r.id !== rowId))
   const removeForm = (rowId: string, form: string) =>
     onNexusRowsChange(nexusRows.map((r) => (r.id === rowId ? { ...r, forms: r.forms.filter((f) => f !== form) } : r)))
+  const [showSigningModal, setShowSigningModal] = useState(false)
+  const [fpoaSigned, setFpoaSigned] = useState(false)
 
   return (
     <div className="h-full bg-white flex flex-col">
@@ -895,10 +957,20 @@ function NexusSetupEditor({
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-base font-semibold text-gray-900">
-                Add tax forms
+                {editorMode === 'new'
+                  ? 'Add nexus setup'
+                  : editorMode === 'existing'
+                    ? 'Edit nexus setup'
+                    : wizardStep === 1
+                      ? 'Configure tax return'
+                      : 'Configure tax return for your business'}
               </h3>
               <p className="mt-1 text-xs leading-5 text-gray-600">
-                Choose the tax forms to file for each state you are registered in.
+                {editorMode
+                  ? 'Add the nexus regions for this setup and assign the eligible forms for each region.'
+                  : wizardStep === 1
+                    ? 'Complete the setup flow to sign the FPOA and configure tax returns for each nexus region.'
+                    : 'Add as many nexus regions as you need and assign eligible forms for each region before moving to the configure nexus screen.'}
               </p>
             </div>
             <button onClick={onBack} className={LINK}>
@@ -906,10 +978,148 @@ function NexusSetupEditor({
             </button>
           </div>
 
+          {/* Steps Indicator — first-run wizard only */}
+          {!editorMode && (
+          <div className="mt-5 flex items-center gap-4">
+            {[1, 2].map((step) => {
+              const active = wizardStep === step
+              const completed = step < wizardStep
+              return (
+                <div key={step} className={`flex min-w-0 items-center ${step === 1 ? 'flex-1 gap-3' : 'flex-none gap-3'}`}>
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium ${
+                      completed
+                        ? 'bg-blue-600 text-white'
+                        : active
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'bg-gray-100 text-gray-500 border border-gray-300'
+                    }`}
+                  >
+                    {completed ? '✓' : step}
+                  </div>
+                  <div className="hidden sm:block text-xs text-gray-600">
+                    {step === 1 ? 'Sign FPOA' : 'Tax return'}
+                  </div>
+                  {step < 2 && <div className="ml-1 h-px flex-1 bg-gray-300" />}
+                </div>
+              )
+            })}
+          </div>
+          )}
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 bg-gray-50">
+          {wizardStep === 1 ? (
+            // Step 1: FPOA
+            <div className="space-y-4">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-4">
+                <p className="text-xs text-gray-700">
+                  Review and digitally sign your FPOA before you continue to tax return configuration.
+                </p>
+              </div>
+
+              <div className="w-full rounded-lg border border-gray-300 bg-white p-4">
+                <div className="flex min-h-96 flex-col">
+                  {/* Document Header */}
+                  <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-900">FPOA_Zylker_Canada.pdf</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Document preview</p>
+                    </div>
+                    <span className="rounded-full border border-gray-300 bg-gray-50 px-2 py-1 text-xs text-gray-600">
+                      Page 1 of 1
+                    </span>
+                  </div>
+
+                  {/* Document Preview */}
+                  <div className="relative flex-1 bg-gradient-to-b from-gray-100 to-gray-50 flex items-center justify-center">
+                    <div className="flex h-full w-full flex-col bg-white px-8 py-7">
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-5">
+                        <div>
+                          <div className="text-xs font-medium text-gray-900">Form POA</div>
+                          <div className="text-xs text-gray-500 mt-1">Authorization for direct tax filing setup</div>
+                        </div>
+                        <div className="h-6 w-16 rounded-md bg-gray-100" />
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="space-y-3">
+                          <div className="h-2 rounded-full bg-gray-200" />
+                          <div className="h-2 w-11/12 rounded-full bg-gray-200" />
+                          <div className="h-2 w-10/12 rounded-full bg-gray-200" />
+                          <div className="h-2 w-9/12 rounded-full bg-gray-200" />
+                        </div>
+
+                        <div className="mt-8 grid grid-cols-2 gap-4">
+                          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                            <div className="h-2 w-12 rounded-full bg-gray-300" />
+                            <div className="mt-3 h-8 rounded-lg border border-dashed border-gray-300 bg-white" />
+                          </div>
+                          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                            <div className="h-2 w-14 rounded-full bg-gray-300" />
+                            <div className="mt-3 h-8 rounded-lg border border-dashed border-gray-300 bg-white" />
+                          </div>
+                        </div>
+
+                        <div className="mt-auto h-16 rounded-lg border border-dashed border-gray-300 bg-blue-50 px-5 py-4">
+                          <div className="text-xs uppercase tracking-wider text-gray-500">Digital signature</div>
+                          <div className="mt-3 h-6 w-2/3 rounded-full bg-gradient-to-r from-blue-200 to-blue-100 opacity-60" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Overlay */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/70 backdrop-blur-[2px] p-6 text-center">
+                      {fpoaStatus === 'idle' && (
+                        <>
+                          <p className="text-sm text-gray-700">Review the document and add your digital signature.</p>
+                          <button
+                            onClick={() => setShowDocument(true)}
+                            className={LINK}
+                          >
+                            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+                              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                            </svg>
+                            Sign FPOA digitally
+                          </button>
+                        </>
+                      )}
+                      {fpoaStatus === 'signing' && (
+                        <p className="text-sm text-gray-700">Applying your signature…</p>
+                      )}
+                      {fpoaStatus === 'processing' && (
+                        <>
+                          <p className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700">
+                            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                            </svg>
+                            FPOA signed successfully
+                          </p>
+                          <button
+                            onClick={() => setShowDocument(true)}
+                            className={LINK}
+                          >
+                            View signed document
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={onNext}
+                  className={BTN_PRIMARY}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          ) : (
+            // Step 2: Tax Return Configuration
             <div className="space-y-4">
               {showQuestionnaireCard && (
                 <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -969,6 +1179,11 @@ function NexusSetupEditor({
                           </div>
                           <span className="text-xs font-medium text-gray-800">{row.state}</span>
                         </div>
+                        <button onClick={() => removeRow(row.id)} aria-label={`Remove ${row.state}`} className={`${BTN_ICON} hover:text-red-500`}>
+                          <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                          </svg>
+                        </button>
                       </div>
                       <div className="ml-10 flex flex-wrap items-center gap-1.5">
                         {row.forms.length === 0 && (
@@ -1001,10 +1216,11 @@ function NexusSetupEditor({
                   onClick={onSaveFilingSetup}
                   className={BTN_PRIMARY}
                 >
-                  Save setup
+                  {editorMode ? 'Save setup' : 'Save filing setup'}
                 </button>
               </div>
             </div>
+          )}
         </div>
 
       {addingFormFor && (() => {
@@ -1021,7 +1237,6 @@ function NexusSetupEditor({
 
       {showQuestionnaire && (
         <QuestionnaireModal
-          regions={nexusRows.map((r) => ({ code: r.stateCode, name: r.state }))}
           initialAnswers={questionnaire ?? EMPTY_ANSWERS}
           onSubmit={(answers) => {
             onQuestionnaireSubmit(answers)
@@ -1031,11 +1246,21 @@ function NexusSetupEditor({
         />
       )}
 
+      {showDocument && (
+        <FpoaDocumentModal
+          signed={fpoaStatus !== 'idle'}
+          onSign={() => {
+            onFpoaSign()
+            setShowDocument(false)
+          }}
+          onClose={() => setShowDocument(false)}
+        />
+      )}
     </div>
   )
 }
 
-// ─── Direct Tax: active page (after connecting Avalara) ─
+// ─── Direct Tax Summary (after filing setup is saved) ─
 function StatusPill({ tone, children }: { tone: 'success' | 'warning' | 'neutral'; children: React.ReactNode }) {
   const styles = {
     success: 'border-green-200 bg-green-50 text-green-700',
@@ -1053,81 +1278,20 @@ function StatusPill({ tone, children }: { tone: 'success' | 'warning' | 'neutral
 
 const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-function DisableDirectTaxModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="disable-title"
-        aria-describedby="disable-desc"
-        className="w-full max-w-[420px] rounded-xl border border-gray-200 bg-white shadow-2xl"
-      >
-        <div className="px-6 pt-5 pb-4">
-          <h2 id="disable-title" className="text-base font-semibold text-gray-900">
-            Disable Direct Return Filing?
-          </h2>
-          <p id="disable-desc" className="mt-1.5 text-sm leading-5 text-gray-600">
-            Avalara will stop filing direct tax returns for your business, and your FPOA and tax form setups will be
-            removed. You can set it up again at any time.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 rounded-b-xl border-t border-gray-200 bg-gray-50 px-6 py-4">
-          <button onClick={onConfirm} className={`${BTN_BASE} px-4 bg-red-600 text-white hover:bg-red-700`}>
-            Disable
-          </button>
-          <button onClick={onCancel} className={BTN_SECONDARY}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function DirectTaxActivePage({
-  focus,
+function DirectTaxSummary({
   fpoaStatus,
-  fpoaSignedAt,
   setups,
   onFpoaSign,
+  onAddSetup,
   onViewSetup,
-  onDisable,
-  onManageRegistrations,
-  setupDone,
-  onMarkRegistrationsDone,
 }: {
-  setupDone: boolean[]
-  onMarkRegistrationsDone: () => void
-  focus: DirectTaxSegment
   fpoaStatus: FpoaStatus
-  fpoaSignedAt: Date | null
   setups: FilingSetup[]
   onFpoaSign: () => void
+  onAddSetup: () => void
   onViewSetup: (id: string) => void
-  onDisable: () => void
-  onManageRegistrations: () => void
 }) {
-  const [showSignedDocument, setShowSignedDocument] = useState(false)
-  // Whether the Acrobat Sign form was loaded on this visit. After signing it keeps
-  // showing the signed agreement (with Adobe's download option), so it stays mounted.
-  const [esignLoaded, setEsignLoaded] = useState(fpoaStatus === 'idle')
-  // Acrobat Sign posts an ESIGN event to the parent page once the form is signed.
-  useEffect(() => {
-    if (fpoaStatus !== 'idle') return
-    const onMessage = (e: MessageEvent) => {
-      if (!ESIGN_ORIGIN.test(e.origin)) return
-      try {
-        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
-        if (data?.type === 'ESIGN') onFpoaSign()
-      } catch {
-        // Not an Acrobat Sign event.
-      }
-    }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [fpoaStatus])
-  const [confirmDisable, setConfirmDisable] = useState(false)
+  const [showDocument, setShowDocument] = useState(false)
   const [expanded, setExpanded] = useState<string[]>([])
   const signed = fpoaStatus === 'processing'
   // One table row per nexus card, across every saved setup.
@@ -1135,147 +1299,78 @@ function DirectTaxActivePage({
   const toggleExpanded = (id: string) =>
     setExpanded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
-  const scrollTo = (segment: DirectTaxSegment) =>
-    document.getElementById(`segment-${segment}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  // Coming back from the forms editor lands on the tax forms segment.
-  useEffect(() => {
-    if (focus === 'forms') scrollTo('forms')
-  }, [focus])
-
   return (
     <div className="space-y-5 p-6">
-      {/* Status */}
-      <section aria-labelledby="direct-tax-status" className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-        <div className="flex items-start justify-between gap-4 px-6 py-5">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <h1 id="direct-tax-status" className="text-lg font-semibold text-gray-900">
-                Direct Return Filing
-              </h1>
-              <span className="rounded-md bg-green-700 px-2 py-0.5 text-xs font-medium text-white">Active</span>
-            </div>
-            <p className="mt-1 text-sm text-gray-600">
-              File direct tax returns automatically for each nexus region, powered by Avalara.
-            </p>
+      {/* Page header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-lg font-semibold text-gray-900">Direct Tax</h1>
+            <StatusPill tone="success">Connected to Avalara</StatusPill>
           </div>
-          <button onClick={() => setConfirmDisable(true)} className={BTN_SECONDARY}>
-            Disable
-          </button>
+          <p className="mt-1 text-xs text-gray-600">
+            Manage your power of attorney and the tax returns Avalara files for each nexus region.
+          </p>
         </div>
-      </section>
+      </div>
 
-      {/* Setup progress — until every step is done */}
-      {setupDone.some((d) => !d) && (
-        <section className="rounded-lg border border-gray-200 bg-white px-5 py-4">
-          <SetupChecklist
-            done={setupDone}
-            title="Setup progress"
-            intro="Each step is marked completed as soon as you finish it."
-            actions={{
-              0: { label: 'Add Tax Registration', onClick: onManageRegistrations },
-              2: { label: 'Sign FPOA', onClick: () => scrollTo('fpoa') },
-              3: { label: 'Add tax forms', onClick: () => scrollTo('forms') },
-            }}
-            markable={{ 0: onMarkRegistrationsDone }}
-          />
-        </section>
-      )}
-
-      {/* Segment: FPOA signing — the document is read inline, then collapses once signed */}
+      {/* Sign FPOA */}
       <section
-        id="segment-fpoa"
         aria-labelledby="fpoa-heading"
-        className="scroll-mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white"
+        className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white px-5 py-4"
       >
-        <div className="flex items-center justify-between gap-4 px-5 py-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 id="fpoa-heading" className="text-sm font-semibold text-gray-900">Form POA (Power of Attorney)</h2>
-              {signed ? (
-                <StatusPill tone="success">Signed</StatusPill>
-              ) : fpoaStatus === 'signing' ? (
-                <StatusPill tone="neutral">Signing</StatusPill>
-              ) : (
-                <StatusPill tone="warning">Pending</StatusPill>
-              )}
-            </div>
-            <p className="mt-0.5 text-xs text-gray-600">
-              {signed
-                ? `Signed${fpoaSignedAt ? ` on ${formatDate(fpoaSignedAt)}` : ''}. Avalara is authorized to file direct tax returns on your behalf.`
-                : "Review the FPOA below and sign it so Avalara can file returns on your behalf. Returns won't be filed until it's signed."}
-            </p>
-          </div>
-          {signed && (
-            <button
-              onClick={() => setShowSignedDocument((v) => !v)}
-              aria-expanded={showSignedDocument}
-              aria-controls="fpoa-document"
-              className={`${LINK} whitespace-nowrap`}
-            >
-              {showSignedDocument ? 'Hide signed document' : 'View signed document'}
-              <svg
-                viewBox="0 0 24 24"
-                className={`h-4 w-4 fill-current transition-transform duration-200 ${showSignedDocument ? 'rotate-180' : ''}`}
-                aria-hidden="true"
-              >
-                <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
-              </svg>
-            </button>
-          )}
+        <div
+          className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border ${
+            signed ? 'border-green-200 bg-green-50 text-green-600' : 'border-amber-200 bg-amber-50 text-amber-600'
+          }`}
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+            {signed ? (
+              <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm-3.06 16L7.4 14.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L10.94 18ZM13 9V3.5L18.5 9H13Z" />
+            ) : (
+              <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm-1 15h-2v-2h2v2Zm0-4h-2V9h2v4Zm0-4V3.5L18.5 9H13Z" />
+            )}
+          </svg>
         </div>
-
-        {/* The live Acrobat Sign form: read and sign the real FPOA right here */}
-        {(esignLoaded || !signed) && (
-          <div id="fpoa-document" className={`border-t border-gray-200 ${signed && !showSignedDocument ? 'hidden' : ''}`}>
-            <div className="flex items-center justify-between bg-gray-50 px-5 py-2">
-              <p className="text-xs font-medium text-gray-700">FPOA · Adobe Acrobat Sign</p>
-              <a href={FPOA_ESIGN_URL} target="_blank" rel="noreferrer" className={LINK_SM}>
-                Open in new tab
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                  <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7ZM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7Z" />
-                </svg>
-              </a>
-            </div>
-            <iframe
-              title="FPOA document — sign with Adobe Acrobat Sign"
-              src={FPOA_ESIGN_URL}
-              onLoad={() => setEsignLoaded(true)}
-              className="block h-[44rem] w-full border-0 border-t border-gray-200 bg-white"
-            />
-            {!signed && (
-              <div className="flex items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-5 py-3">
-                <p className="text-xs text-gray-600">
-                  Fill in and sign the document above. This page updates as soon as Acrobat Sign confirms your signature.
-                </p>
-                <button onClick={onFpoaSign} disabled={fpoaStatus === 'signing'} className={BTN_PRIMARY}>
-                  {fpoaStatus === 'signing' ? 'Confirming…' : "I've signed the document"}
-                </button>
-              </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h2 id="fpoa-heading" className="text-sm font-semibold text-gray-900">
+              Form POA (Power of Attorney)
+            </h2>
+            {signed ? (
+              <StatusPill tone="success">Signed</StatusPill>
+            ) : fpoaStatus === 'signing' ? (
+              <StatusPill tone="neutral">Processing</StatusPill>
+            ) : (
+              <StatusPill tone="warning">Pending</StatusPill>
             )}
           </div>
-        )}
-
-        {/* Signed on an earlier visit: the agreement lives in Acrobat Sign */}
-        {signed && !esignLoaded && showSignedDocument && (
-          <div id="fpoa-document" className="border-t border-gray-200 bg-gray-50 px-5 py-4">
-            <p className="text-sm text-gray-700">
-              Adobe Acrobat Sign emailed the signed FPOA to the signer. You can also find it in your Acrobat Sign account.
-            </p>
-          </div>
-        )}
+          <p className="mt-0.5 text-xs text-gray-600">
+            {signed
+              ? 'Signed and processed. Avalara is authorized to file direct tax returns on your behalf.'
+              : fpoaStatus === 'signing'
+                ? 'Applying your signature…'
+                : "Sign the FPOA so Avalara can file returns on your behalf. Returns won't be filed until it's signed."}
+          </p>
+        </div>
+        {signed ? (
+          <button onClick={() => setShowDocument(true)} className={BTN_SECONDARY}>
+            View document
+          </button>
+        ) : fpoaStatus === 'idle' ? (
+          <button onClick={() => setShowDocument(true)} className={BTN_PRIMARY}>
+            Sign FPOA digitally
+          </button>
+        ) : null}
       </section>
 
-      {/* Segment: tax forms */}
-      <section
-        id="segment-forms"
-        aria-labelledby="tax-return-heading"
-        className="scroll-mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white"
-      >
+      {/* Configure Tax Return */}
+      <section aria-labelledby="tax-return-heading" className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="flex items-start justify-between gap-4 px-5 py-4">
           <div>
             <div className="flex items-center gap-2">
               <h2 id="tax-return-heading" className="text-sm font-semibold text-gray-900">
-                Tax forms by nexus
+                Tax return setups
               </h2>
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums">
                 {nexusEntries.length}
@@ -1285,27 +1380,14 @@ function DirectTaxActivePage({
               Add nexus regions and manage the eligible forms for each nexus from one place.
             </p>
           </div>
-          <button onClick={onManageRegistrations} className={BTN_PRIMARY}>
+          <button onClick={onAddSetup} className={BTN_PRIMARY}>
             <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
               <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
             </svg>
-            Add tax registration
+            Add nexus setup
           </button>
         </div>
 
-        {nexusEntries.length === 0 ? (
-          <div className="flex flex-col items-center border-t border-gray-200 px-6 py-10 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-gray-400" aria-hidden="true">
-                <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm2 16H8v-2h8v2Zm0-4H8v-2h8v2Zm-3-5V3.5L18.5 9H13Z" />
-              </svg>
-            </div>
-            <p className="mt-3 text-sm font-medium text-gray-900">No nexus regions yet</p>
-            <p className="mt-1 max-w-sm text-xs text-gray-600">
-              Add a tax registration for each region you file in, then choose the tax forms for it here.
-            </p>
-          </div>
-        ) : (
         <table className="w-full text-left">
           <thead className="border-y border-gray-200 bg-gray-50">
             <tr>
@@ -1361,9 +1443,7 @@ function DirectTaxActivePage({
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-900">{row.state}</p>
-                          <p className="whitespace-nowrap text-xs text-gray-500">
-                            {row.registeredOn ? `Registered ${formatIsoDate(row.registeredOn)}` : `Saved ${formatDate(setup.savedAt)}`}
-                          </p>
+                          <p className="whitespace-nowrap text-xs text-gray-500">Saved {formatDate(setup.savedAt)}</p>
                         </div>
                       </div>
                     </td>
@@ -1387,7 +1467,7 @@ function DirectTaxActivePage({
                         }}
                         className={`${LINK} whitespace-nowrap`}
                       >
-                        Add tax forms
+                        View setup
                         <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
                           <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
                         </svg>
@@ -1420,315 +1500,18 @@ function DirectTaxActivePage({
             })}
           </tbody>
         </table>
-        )}
       </section>
 
-      {confirmDisable && (
-        <DisableDirectTaxModal
-          onConfirm={() => {
-            setConfirmDisable(false)
-            onDisable()
+      {showDocument && (
+        <FpoaDocumentModal
+          signed={fpoaStatus !== 'idle'}
+          onSign={() => {
+            onFpoaSign()
+            setShowDocument(false)
           }}
-          onCancel={() => setConfirmDisable(false)}
+          onClose={() => setShowDocument(false)}
         />
       )}
-    </div>
-  )
-}
-
-// ─── Tax Registration section ─────────────────────────
-function TaxRegistrationSection({
-  registrations,
-  onAdd,
-}: {
-  registrations: TaxRegistration[]
-  onAdd: (registration: TaxRegistration) => void
-}) {
-  const [creating, setCreating] = useState(false)
-
-  if (creating) {
-    return (
-      <NewTaxRegistrationForm
-        registeredCodes={registrations.map((r) => r.code)}
-        onSave={(registration) => {
-          onAdd(registration)
-          setCreating(false)
-        }}
-        onCancel={() => setCreating(false)}
-      />
-    )
-  }
-
-  const findAccountants = (
-    <button className={LINK}>
-      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="1.75" aria-hidden="true">
-        <circle cx="12" cy="7" r="3.5" />
-        <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" strokeLinecap="round" />
-      </svg>
-      Find Accountants
-    </button>
-  )
-
-  return (
-    <div className="flex min-h-full flex-col bg-white">
-      <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
-        <h1 className="text-lg font-semibold text-gray-900">Tax Registration</h1>
-        <div className="flex items-center gap-4">
-          {registrations.length > 0 && (
-            <button onClick={() => setCreating(true)} className={BTN_PRIMARY}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-              </svg>
-              New Tax Registration
-            </button>
-          )}
-          <span className="h-6 w-px bg-gray-200" aria-hidden="true" />
-          {findAccountants}
-        </div>
-      </div>
-
-      {registrations.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-          <h2 className="text-xl font-medium text-gray-900">Create Tax Registration in Zoho Books</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-gray-600">
-            If your business is registered for Tax, you can configure it in your organization. Once configured, you can set
-            up and manage the applicable Taxes for your transactions.
-          </p>
-          <button onClick={() => setCreating(true)} className={`mt-6 ${BTN_PRIMARY}`}>
-            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-            </svg>
-            New Tax Registration
-          </button>
-        </div>
-      ) : (
-        <table className="w-full text-left">
-          <thead className="border-b border-gray-200 bg-gray-50">
-            <tr>
-              {['State', 'Local jurisdiction count', 'Tax registered on', 'Status', 'Tax deregistered on'].map((h) => (
-                <th key={h} scope="col" className="whitespace-nowrap px-6 py-2.5 text-xs font-medium text-gray-500">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {registrations.map((r) => (
-              <tr key={r.id}>
-                <td className="px-6 py-3.5 text-sm text-gray-900">{r.name}</td>
-                <td className="px-6 py-3.5 text-sm text-gray-800 tabular-nums">{r.jurisdictions.length}</td>
-                <td className="px-6 py-3.5 text-sm text-gray-800 whitespace-nowrap">{formatIsoDate(r.registeredOn)}</td>
-                <td className="px-6 py-3.5">
-                  <StatusPill tone="success">Active</StatusPill>
-                </td>
-                <td className="px-6 py-3.5 text-sm text-gray-400">—</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  )
-}
-
-function NewTaxRegistrationForm({
-  registeredCodes,
-  onSave,
-  onCancel,
-  asModal = false,
-}: {
-  // The first registration happens in a modal; later ones on the Tax Registration page.
-  asModal?: boolean
-  registeredCodes: string[]
-  onSave: (registration: TaxRegistration) => void
-  onCancel: () => void
-}) {
-  const available = US_STATES.filter((st) => !registeredCodes.includes(st.code))
-  const [code, setCode] = useState(available[0]?.code ?? '')
-  const [registeredOn, setRegisteredOn] = useState(todayIso())
-  const [jurisdictions, setJurisdictions] = useState<{ name: string; registeredOn: string }[]>([])
-  const [touched, setTouched] = useState(false)
-  const state = US_STATES.find((st) => st.code === code)
-  const options = jurisdictionsFor(code)
-  const dateMissing = touched && !registeredOn
-
-  const changeState = (next: string) => {
-    setCode(next)
-    setJurisdictions([]) // jurisdictions belong to the previous state
-  }
-
-  const save = () => {
-    setTouched(true)
-    if (!state || !registeredOn) return
-    onSave({
-      id: `reg-${code}-${Date.now()}`,
-      code,
-      name: state.name,
-      registeredOn,
-      jurisdictions: jurisdictions.filter((j) => j.name),
-    })
-  }
-
-  const fieldClass = 'h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 hover:border-gray-400'
-
-  const fields = (
-        <div className={`space-y-6 ${asModal ? '' : 'max-w-2xl'}`}>
-          <div className={`grid ${asModal ? 'grid-cols-[9rem_1fr]' : 'grid-cols-[12rem_1fr]'} items-center gap-4`}>
-            <label htmlFor="reg-state" className="text-sm text-gray-900">
-              State
-            </label>
-            <select id="reg-state" value={code} onChange={(e) => changeState(e.target.value)} className={fieldClass}>
-              {available.map((st) => (
-                <option key={st.code} value={st.code}>
-                  {st.name}
-                </option>
-              ))}
-            </select>
-
-            <label htmlFor="reg-date" className="text-sm text-red-600">
-              Registration Date*
-            </label>
-            <div>
-              <input
-                id="reg-date"
-                type="date"
-                value={registeredOn}
-                onChange={(e) => setRegisteredOn(e.target.value)}
-                aria-invalid={dateMissing}
-                className={`${fieldClass} ${dateMissing ? 'border-red-500' : ''}`}
-              />
-              {dateMissing && <p className="mt-1 text-xs text-red-600">Enter the registration date.</p>}
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">Local Tax Registration Details</h2>
-            <p className="mt-1 text-sm text-gray-600">
-              If your business is registered with local tax authorities in the state of {state?.name}, add those details
-              below.
-            </p>
-
-            <div className="mt-3 overflow-hidden rounded-lg border border-gray-200">
-              <table className="w-full text-left">
-                <thead className="border-b border-gray-200 bg-gray-50">
-                  <tr>
-                    <th scope="col" className="w-1/2 px-4 py-2.5 text-xs font-medium text-gray-500">Local jurisdiction</th>
-                    <th scope="col" className="px-4 py-2.5 text-xs font-medium text-gray-500">Tax registration date</th>
-                    <th scope="col" className="w-10 px-2"><span className="sr-only">Remove</span></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {jurisdictions.map((j, i) => (
-                    <tr key={i}>
-                      <td className="px-4 py-2">
-                        <select
-                          aria-label="Local jurisdiction"
-                          value={j.name}
-                          onChange={(e) =>
-                            setJurisdictions((prev) => prev.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))
-                          }
-                          className={fieldClass}
-                        >
-                          {options.map((o) => (
-                            <option key={o} value={o}>
-                              {o}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="date"
-                          aria-label="Tax registration date"
-                          value={j.registeredOn}
-                          onChange={(e) =>
-                            setJurisdictions((prev) =>
-                              prev.map((x, k) => (k === i ? { ...x, registeredOn: e.target.value } : x)),
-                            )
-                          }
-                          className={fieldClass}
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <button
-                          onClick={() => setJurisdictions((prev) => prev.filter((_, k) => k !== i))}
-                          aria-label="Remove jurisdiction"
-                          className={`${BTN_ICON} hover:text-red-500`}
-                        >
-                          <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className={`px-4 py-3 ${jurisdictions.length ? 'border-t border-gray-200' : ''}`}>
-                <button
-                  onClick={() => setJurisdictions((prev) => [...prev, { name: options[0], registeredOn: '' }])}
-                  className={`${BTN_GHOST} bg-gray-50 text-gray-800`}
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-blue-600" aria-hidden="true">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2Z" />
-                  </svg>
-                  Add Jurisdiction
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-  )
-
-  const actions = (
-    <>
-      <button onClick={save} disabled={!state} className={BTN_PRIMARY}>
-        Save
-      </button>
-      <button onClick={onCancel} className={BTN_SECONDARY}>
-        Cancel
-      </button>
-    </>
-  )
-
-  if (asModal) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="new-registration-title"
-          className="flex max-h-[90vh] w-full max-w-[640px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl"
-        >
-          <div className="flex items-start gap-3 border-b border-gray-200 px-6 pt-5 pb-4">
-            <div className="min-w-0 flex-1">
-              <h2 id="new-registration-title" className="text-base font-semibold leading-6 text-gray-900">
-                New Tax Registration
-              </h2>
-              <p className="mt-1 text-sm leading-5 text-gray-600">
-                Direct tax is filed only in the states you are registered in. Add your first registration to get started.
-              </p>
-            </div>
-            <button onClick={onCancel} aria-label="Close" className={`-mr-2 -mt-1 ${BTN_ICON}`}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-              </svg>
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto px-6 py-5">{fields}</div>
-          <div className="flex items-center gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">{actions}</div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex min-h-full flex-col bg-white">
-      <div className="border-b border-gray-200 px-6 py-4">
-        <h1 className="text-lg font-semibold text-gray-900">New Tax Registration Settings</h1>
-      </div>
-      <div className="flex-1 px-6 py-6">{fields}</div>
-      <div className="sticky bottom-0 flex items-center gap-2 border-t border-gray-200 bg-white px-6 py-4">{actions}</div>
     </div>
   )
 }
@@ -1740,189 +1523,37 @@ const TAX_SECTIONS = [
   { id: 'tax-authorities', label: 'Tax Authorities' },
   { id: 'tax-registration', label: 'Tax Registration' },
   { id: 'tax-settings', label: 'Tax Settings' },
-  { id: 'direct-tax', label: 'Direct Return Filing', icon: '⚡' },
+  { id: 'direct-tax', label: 'Direct Tax', icon: '⚡' },
   { id: 'tax-automation', label: 'Tax Automation Settings' },
 ]
 
-// ─── How setup works ──────────────────────────────────
-const SETUP_STEPS: { title: string; short: string; description: string; icon: string }[] = [
-  {
-    title: 'Add your tax registrations',
-    short: 'Tax registrations',
-    description: 'Add the states where you file returns.',
-    icon: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5Z',
-  },
-  {
-    title: 'Connect to Avalara',
-    short: 'Connect Avalara',
-    description: 'Link Avalara so it can file returns for you.',
-    icon: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1ZM8 13h8v-2H8v2Zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5Z',
-  },
-  {
-    title: 'Sign the FPOA',
-    short: 'Sign FPOA',
-    description: 'Authorize Avalara to file on your behalf.',
-    icon: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
-  },
-  {
-    title: 'Choose forms for each state',
-    short: 'Tax forms',
-    description: 'Pick the returns to file in each state.',
-    icon: 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm2 16H8v-2h8v2Zm0-4H8v-2h8v2Zm-3-5V3.5L18.5 9H13Z',
-  },
-]
-
-// Read-only: a step is ticked by finishing its action, never by clicking it.
-function SetupChecklist({
-  done,
-  title,
-  intro,
-  actions = {},
-  markable = {},
-  hints = {},
-}: {
-  done: boolean[]
-  title: string
-  intro: string
-  actions?: Partial<Record<number, { label: string; onClick: () => void }>>
-  // Steps the user may tick by hand (only Step 1 today).
-  markable?: Partial<Record<number, () => void>>
-  // Shown on an unfinished step that has no shortcut yet.
-  hints?: Partial<Record<number, string>>
-}) {
-  const doneCount = done.filter(Boolean).length
-
+// ─── Empty State Illustration ─────────────────────────
+function DirectTaxEmptyIllustration() {
   return (
-    <div>
-      <div className="flex items-center gap-4">
-        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
-          <div
-            className="h-full rounded-full bg-green-500 transition-all duration-300"
-            style={{ width: `${(doneCount / SETUP_STEPS.length) * 100}%` }}
-          />
-        </div>
-        <span className="text-xs text-gray-500 tabular-nums">
-          {doneCount} of {SETUP_STEPS.length} completed
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-gray-600">{intro}</p>
-
-      {/* One row per step: number · name and description · status or actions, right-aligned */}
-      <ol className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200">
-        {SETUP_STEPS.map((step, i) => {
-          const isDone = done[i]
-          const action = actions[i]
-          const markDone = markable[i]
-          const hint = hints[i]
-          return (
-            <li key={step.title} className="flex min-h-12 items-center gap-3 px-4 py-2">
-              <span
-                className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                  isDone ? 'bg-green-600 text-white' : 'border border-gray-300 text-gray-500'
-                }`}
-                aria-hidden="true"
-              >
-                {isDone ? (
-                  <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                  </svg>
-                ) : (
-                  i + 1
-                )}
-              </span>
-              <p className="min-w-0 flex-1 text-sm">
-                <span className={`font-medium ${isDone ? 'text-gray-500' : 'text-gray-900'}`}>{step.short}</span>
-                <span className="sr-only">{isDone ? ' (completed)' : ' (not completed)'}</span>
-                <span className="ml-2 text-xs text-gray-500">{step.description}</span>
-              </p>
-              <div className="flex flex-shrink-0 items-center gap-4">
-                {isDone ? (
-                  <span className="text-xs font-medium text-green-700">Completed</span>
-                ) : (
-                  <>
-                    {markDone && (
-                      <button onClick={markDone} className="text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline">
-                        Mark as completed
-                      </button>
-                    )}
-                    {action ? (
-                      <button onClick={action.onClick} className={BTN_XS_PRIMARY}>
-                        {action.label}
-                      </button>
-                    ) : (
-                      !markDone && <span className="text-xs text-gray-400">{hint ?? 'Not started'}</span>
-                    )}
-                  </>
-                )}
-              </div>
-            </li>
-          )
-        })}
-      </ol>
-    </div>
-  )
-}
-
-// ─── How your tax is calculated ───────────────────────
-const TAX_CALCULATION_FACTORS = [
-  {
-    id: 'registered',
-    title: "Where You're Registered",
-    body: 'Returns are filed only in the regions where you are registered and have nexus.',
-  },
-  {
-    id: 'business',
-    title: 'How Your Business Is Set Up',
-    body: 'Your entity type — corporation, LLC, partnership or sole proprietorship — decides which return forms apply.',
-  },
-  {
-    id: 'operate',
-    title: 'Where You Operate',
-    body: 'An office, employees or inventory in a region can add withholding and estimated-payment filings there.',
-  },
-]
-
-function TaxCalculationAccordion() {
-  const [openId, setOpenId] = useState<string | null>(TAX_CALCULATION_FACTORS[0].id)
-  return (
-    <div>
-      <p className="flex items-center gap-2 border-b border-gray-200 pb-2.5 text-xs font-semibold uppercase tracking-wider text-amber-700">
-        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-amber-500" aria-hidden="true">
-          <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1Zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7Z" />
-        </svg>
-        How your tax is calculated
-      </p>
-      <ul className="mt-3 border-l border-gray-200">
-        {TAX_CALCULATION_FACTORS.map((f) => {
-          const open = openId === f.id
-          return (
-            <li key={f.id} className={`-ml-px border-l-2 ${open ? 'border-blue-600' : 'border-transparent'}`}>
-              <button
-                onClick={() => setOpenId(open ? null : f.id)}
-                aria-expanded={open}
-                aria-controls={`tax-factor-${f.id}`}
-                className="flex w-full items-center gap-2 py-2 pl-3 text-left"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className={`h-4 w-4 flex-shrink-0 fill-gray-500 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
-                  aria-hidden="true"
-                >
-                  <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                </svg>
-                <span className={`text-sm ${open ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>{f.title}</span>
-              </button>
-              {open && (
-                <p id={`tax-factor-${f.id}`} className="pb-3 pl-9 pr-2 text-sm leading-5 text-gray-600">
-                  {f.body}
-                </p>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-    </div>
+    <svg viewBox="0 0 160 120" className="h-28 w-auto" aria-hidden="true">
+      {/* backdrop */}
+      <ellipse cx="80" cy="104" rx="56" ry="8" fill="#EEF2F8" />
+      <circle cx="80" cy="56" r="48" fill="#F1F6FF" />
+      {/* back document */}
+      <rect x="44" y="22" width="56" height="72" rx="6" fill="#FFFFFF" stroke="#D8E0EB" transform="rotate(-8 72 58)" />
+      {/* front document */}
+      <rect x="58" y="18" width="56" height="74" rx="6" fill="#FFFFFF" stroke="#C9D6EA" />
+      <rect x="66" y="28" width="26" height="4" rx="2" fill="#0D81FD" />
+      <rect x="66" y="38" width="40" height="3" rx="1.5" fill="#E2E8F0" />
+      <rect x="66" y="45" width="34" height="3" rx="1.5" fill="#E2E8F0" />
+      <rect x="66" y="52" width="38" height="3" rx="1.5" fill="#E2E8F0" />
+      <rect x="66" y="66" width="18" height="16" rx="3" fill="#F1F6FF" />
+      <text x="75" y="78" textAnchor="middle" fontSize="11" fontWeight="600" fill="#0D81FD">%</text>
+      <rect x="88" y="70" width="18" height="3" rx="1.5" fill="#E2E8F0" />
+      <rect x="88" y="76" width="12" height="3" rx="1.5" fill="#E2E8F0" />
+      {/* badge */}
+      <circle cx="114" cy="84" r="13" fill="#0D81FD" />
+      <path d="m108.5 84 3.8 3.8 7.2-7.6" fill="none" stroke="#FFFFFF" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      {/* sparkles */}
+      <circle cx="40" cy="30" r="2.5" fill="#BFD6FF" />
+      <circle cx="126" cy="30" r="3.5" fill="#BFD6FF" />
+      <circle cx="132" cy="58" r="2" fill="#D8E0EB" />
+    </svg>
   )
 }
 
@@ -1930,26 +1561,11 @@ function TaxCalculationAccordion() {
 function DirectTaxSettings({
   onOpenSetup,
   setupPage,
-  registrationPage,
-  showRegistrationTab,
-  setupDone,
-  onMarkRegistrationsDone,
-  onGoToRegistration,
-  selectedSection,
-  onSelectSection: setSelectedSection,
 }: {
   onOpenSetup: () => void
   setupPage?: React.ReactNode
-  registrationPage: React.ReactNode
-  showRegistrationTab: boolean
-  setupDone: boolean[]
-  onMarkRegistrationsDone: () => void
-  // fromSteps: the Step 1 link keeps the user on this page after the first registration is saved.
-  onGoToRegistration: (fromSteps?: boolean) => void
-  selectedSection: string
-  onSelectSection: (id: string) => void
 }) {
-  const [showDetails, setShowDetails] = useState(false)
+  const [selectedSection, setSelectedSection] = useState<string>('direct-tax')
 
   return (
     <div className="flex h-full flex-1 min-w-0 gap-0">
@@ -1957,7 +1573,7 @@ function DirectTaxSettings({
       <div className="w-64 border-r border-gray-200 bg-white p-4 overflow-y-auto">
         <h2 className="text-sm font-semibold text-gray-900 mb-4 px-2">Taxes</h2>
         <div className="space-y-1">
-          {TAX_SECTIONS.filter((section) => section.id !== 'tax-registration' || showRegistrationTab).map((section) => (
+          {TAX_SECTIONS.map((section) => (
             <button
               key={section.id}
               onClick={() => setSelectedSection(section.id)}
@@ -1981,90 +1597,115 @@ function DirectTaxSettings({
         {selectedSection === 'direct-tax' && setupPage}
 
         {selectedSection === 'direct-tax' && !setupPage && (
-          <div className="space-y-6 p-6">
-            {/* Configure Direct Return Filing — compact; details on demand so the steps lead */}
-            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-              <div className="flex items-center gap-3 px-5 py-3.5">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-blue-600" strokeWidth="1.75" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />
-                  </svg>
+          <div className="space-y-6 p-6 h-full flex flex-col">
+            {/* Configure Direct Tax — Empty State */}
+            <div className="bg-white border border-gray-200 rounded-lg px-8 py-6">
+              <div className="flex items-center gap-10">
+                <div className="hidden flex-shrink-0 pl-4 md:block">
+                  <DirectTaxEmptyIllustration />
                 </div>
+
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-base font-semibold text-gray-900">Configure Direct Return Filing</h1>
-                  <h2 className="text-xs font-normal text-gray-600">
+                  <h1 className="text-xl font-semibold text-gray-900">Configure Direct Tax</h1>
+                  <h2 className="mt-1 text-sm font-normal text-gray-600">
                     Set up automatic direct tax calculation by integrating with Zoho Books or Avalara.
                   </h2>
-                </div>
-                <button
-                  onClick={() => setShowDetails((v) => !v)}
-                  aria-expanded={showDetails}
-                  aria-controls="direct-tax-details"
-                  className={`${LINK_SM} min-w-[5.5rem] justify-end whitespace-nowrap`}
-                >
-                  {showDetails ? 'Hide details' : 'Learn more'}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className={`h-3.5 w-3.5 fill-current transition-transform duration-200 ${showDetails ? 'rotate-180' : ''}`}
-                    aria-hidden="true"
-                  >
-                    <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
-                  </svg>
-                </button>
-                <button onClick={onOpenSetup} className={BTN_PRIMARY}>
-                  Set up Direct Return Filing
-                </button>
-              </div>
 
-              {showDetails && (
-                <div
-                  id="direct-tax-details"
-                  className="grid items-start gap-x-10 gap-y-6 border-t border-gray-200 bg-gray-50/60 py-5 pl-5 pr-5 sm:pl-[4.25rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]"
-                >
-                  <div>
-                    <p className="border-b border-gray-200 pb-2.5 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      What you get
-                    </p>
-                    <ul className="mt-3 space-y-2.5">
-                      {DIRECT_TAX_CARD_BENEFITS.map((benefit) => (
-                        <li key={benefit} className="flex items-start gap-2.5">
-                          <span className="mt-[7px] h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
-                          <span className="text-sm leading-5 text-gray-800">{benefit}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <TaxCalculationAccordion />
+                  <ul className="mt-4 space-y-1.5">
+                    {DIRECT_TAX_CARD_BENEFITS.map((benefit) => (
+                      <li key={benefit} className="flex items-start gap-2">
+                        <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 flex-shrink-0 fill-blue-600" aria-hidden="true">
+                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                        </svg>
+                        <span className="text-sm leading-5 text-gray-700">{benefit}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button onClick={onOpenSetup} className={`mt-5 ${BTN_PRIMARY}`}>
+                    Set up Direct Tax
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* Setup progress */}
-            <section className="rounded-lg border border-gray-200 bg-white px-5 py-4">
-              <SetupChecklist
-                done={setupDone}
-                title="Setup progress"
-                intro="Start with your tax registrations. Avalara files your direct tax returns automatically once all four steps are done."
-                actions={{
-                  0: { label: 'Add Tax Registration', onClick: () => onGoToRegistration(true) },
-                  1: { label: 'Set up', onClick: onOpenSetup },
-                }}
-                markable={{ 0: onMarkRegistrationsDone }}
-                hints={{ 2: 'After connecting', 3: 'After connecting' }}
-              />
-            </section>
+            {/* Step-by-Step Setup Process */}
+            <div className="bg-white border border-gray-200 p-6 rounded-lg">
+              <h3 className="text-base font-semibold text-gray-900 mb-1">Set up Direct Tax</h3>
+              <p className="text-xs text-gray-600 mb-6">
+                Follow these steps to configure your direct tax filing. Each step builds on the previous one to ensure proper setup.
+              </p>
+
+              <div className="space-y-4">
+                {/* Step 1 */}
+                <div className="flex gap-4">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white">
+                    <span className="text-xs font-semibold text-gray-600">1</span>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <h4 className="text-sm font-medium text-gray-900">Set up your business areas in the tax registration tab</h4>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Define which regions or jurisdictions your business operates in and needs to file taxes.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex gap-4">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white">
+                    <span className="text-xs font-semibold text-gray-600">2</span>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <h4 className="text-sm font-medium text-gray-900">Configure/initiate direct tax</h4>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Set up your direct tax configuration and choose your tax filing integration method.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex gap-4">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white">
+                    <span className="text-xs font-semibold text-gray-600">3</span>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <h4 className="text-sm font-medium text-gray-900">Sign the funding power of attorney</h4>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Authorize your tax agent or filing service to handle direct tax submissions on your behalf.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className="flex gap-4">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-white">
+                    <span className="text-xs font-semibold text-gray-600">4</span>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <h4 className="text-sm font-medium text-gray-900">Add the tax forms and nexuses</h4>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Select and configure the tax forms required for each of your business nexus locations.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-900">
+                  Once all steps are complete, your direct tax configuration will be active and you can begin filing automatically.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
-        {selectedSection === 'tax-registration' && registrationPage}
-
-        {selectedSection !== 'direct-tax' && selectedSection !== 'tax-registration' && (
+        {selectedSection !== 'direct-tax' && (
           <div className="bg-white border border-gray-200 p-6 rounded-lg m-6">
             <h2 className="text-base font-semibold text-gray-900">
               {TAX_SECTIONS.find((s) => s.id === selectedSection)?.label}
             </h2>
             <p className="text-sm text-gray-600 mt-4">
-              This section is coming soon. Select "Direct Return Filing" to configure your tax settings.
+              This section is coming soon. Select "Direct Tax" to configure your tax settings.
             </p>
           </div>
         )}
@@ -2074,95 +1715,75 @@ function DirectTaxSettings({
 }
 
 // ─── App Wrapper ──────────────────────────────────────
-// `headerSlot` lets the version switcher sit in the top bar next to Help.
 export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactNode } = {}) {
   const [appPage, setAppPage] = useState<AppPage>('overview')
-  const [selectedSection, setSelectedSection] = useState('direct-tax')
-  const [activeSegment, setActiveSegment] = useState<DirectTaxSegment>('fpoa')
   const [showAvalaraModal, setShowAvalaraModal] = useState(false)
+  const [wizardStep, setWizardStep] = useState<SetupWizardStep>(1)
   const [fpoaStatus, setFpoaStatus] = useState<FpoaStatus>('idle')
-  const [fpoaSignedAt, setFpoaSignedAt] = useState<Date | null>(null)
-  // Tax registrations are the source of truth for which states Direct Tax files in.
-  const [registrations, setRegistrations] = useState<TaxRegistration[]>([])
-  const [taxForms, setTaxForms] = useState<Record<string, string[]>>({})
-  const [savedQuestionnaire, setSavedQuestionnaire] = useState<QuestionnaireAnswers | null>(null)
-  const [showFirstRegistration, setShowFirstRegistration] = useState(false)
-  // Step 1 is the only step that can also be ticked by hand.
-  const [registrationsMarkedDone, setRegistrationsMarkedDone] = useState(false)
-  // Opened from the setup steps: stay on the page after saving instead of jumping to the tab.
-  const [stayAfterRegistration, setStayAfterRegistration] = useState(false)
-  const hasRegistrations = registrations.length > 0
+  const [nexusRows, setNexusRows] = useState<NexusRow[]>(DEFAULT_NEXUS_ROWS)
+  const [questionnaire, setQuestionnaire] = useState<QuestionnaireAnswers | null>(null)
+  const [filingSetups, setFilingSetups] = useState<FilingSetup[]>([])
+  // Which saved setup the wizard is editing; null means a new one.
+  const [editingSetupId, setEditingSetupId] = useState<string | null>(null)
+  // null while the first filing setup goes through the wizard.
+  const [editorMode, setEditorMode] = useState<'new' | 'existing' | null>(null)
 
-  // The Tax Registration tab stays hidden until the first registration is saved from the modal.
-  const openTaxRegistration = (fromSteps = false) => {
-    if (hasRegistrations) {
-      setSelectedSection('tax-registration')
+  const openSetupEditor = (setup: FilingSetup | null) => {
+    setEditingSetupId(setup?.id ?? null)
+    setEditorMode(setup ? 'existing' : 'new')
+    setNexusRows(setup?.rows ?? DEFAULT_NEXUS_ROWS)
+    setQuestionnaire(setup?.questionnaire ?? null)
+    setWizardStep(2)
+    setAppPage('wizard')
+  }
+
+  const handleSaveFilingSetup = () => {
+    const saved: FilingSetup = {
+      id: editingSetupId ?? `setup-${Date.now()}`,
+      savedAt: new Date(),
+      rows: nexusRows,
+      questionnaire,
+    }
+    setFilingSetups((prev) =>
+      editingSetupId ? prev.map((s) => (s.id === editingSetupId ? saved : s)) : [...prev, saved],
+    )
+    setEditingSetupId(null)
+    setAppPage('summary')
+  }
+
+  const handleWizardBack = () => {
+    // Once a filing setup exists the summary is home; the intro cards never return.
+    if (filingSetups.length > 0) {
+      setEditingSetupId(null)
+      setAppPage('summary')
       return
     }
-    setStayAfterRegistration(fromSteps)
-    setShowFirstRegistration(true)
-  }
-  const [formsSavedAt, setFormsSavedAt] = useState(() => new Date())
-  // Editor working copies.
-  const [nexusRows, setNexusRows] = useState<NexusRow[]>([])
-  const [questionnaire, setQuestionnaire] = useState<QuestionnaireAnswers | null>(null)
-
-  const registeredRows: NexusRow[] = registrations.map((r) => ({
-    id: r.code,
-    state: r.name,
-    stateCode: r.code,
-    forms: taxForms[r.code] ?? [],
-    registeredOn: r.registeredOn,
-  }))
-  const setups: FilingSetup[] = registeredRows.length
-    ? [{ id: 'registrations', savedAt: formsSavedAt, rows: registeredRows, questionnaire: savedQuestionnaire }]
-    : []
-
-  const setupDone = [
-    hasRegistrations || registrationsMarkedDone,
-    appPage !== 'overview',
-    fpoaStatus === 'processing',
-    hasRegistrations && registrations.every((r) => (taxForms[r.code] ?? []).length > 0),
-  ]
-
-  const openFormsEditor = () => {
-    setNexusRows(registeredRows)
-    setQuestionnaire(savedQuestionnaire)
-    setAppPage('editor')
-  }
-
-  const backToTaxForms = () => {
-    setActiveSegment('forms')
-    setAppPage('active')
-  }
-
-  const handleSaveForms = () => {
-    setTaxForms((prev) => ({ ...prev, ...Object.fromEntries(nexusRows.map((r) => [r.stateCode, r.forms])) }))
-    setSavedQuestionnaire(questionnaire)
-    setFormsSavedAt(new Date())
-    backToTaxForms()
-  }
-
-  const handleAvalaraConnect = () => {
-    setShowAvalaraModal(false)
-    setActiveSegment('fpoa')
-    setAppPage('active')
-  }
-
-  const handleDisable = () => {
     setAppPage('overview')
+    setWizardStep(1)
     setFpoaStatus('idle')
-    setFpoaSignedAt(null)
-    setTaxForms({})
-    setSavedQuestionnaire(null)
+    setQuestionnaire(null)
+    setNexusRows(DEFAULT_NEXUS_ROWS)
+  }
+
+  const handleOpenSetup = () => {
+    setShowAvalaraModal(true)
+  }
+
+  const handleAvalalaConnect = () => {
+    setShowAvalaraModal(false)
+    setAppPage('wizard')
+    setWizardStep(1)
   }
 
   const handleFpoaSign = () => {
     setFpoaStatus('signing')
-    setTimeout(() => {
-      setFpoaStatus('processing')
-      setFpoaSignedAt(new Date())
-    }, 1500)
+    setTimeout(() => setFpoaStatus('processing'), 2000)
+  }
+
+  const handleWizardNext = () => {
+    if (wizardStep === 1) {
+      setWizardStep(2)
+    }
   }
 
   return (
@@ -2176,7 +1797,7 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
         <div className="h-16 border-b border-gray-200 bg-white px-6 flex items-center justify-between">
-          <h1 className="text-sm font-semibold text-gray-900">Direct Return Filing Settings</h1>
+          <h1 className="text-sm font-semibold text-gray-900">Direct Tax Settings</h1>
           <div className="flex items-center gap-2">
             {headerSlot}
             <button className={BTN_GHOST}>
@@ -2191,50 +1812,32 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
         {/* Page Content - Flex Container for 3-column layout */}
         <div className="flex-1 overflow-hidden flex">
           <DirectTaxSettings
-            onOpenSetup={() => setShowAvalaraModal(true)}
-            selectedSection={selectedSection}
-            onSelectSection={setSelectedSection}
-            showRegistrationTab={hasRegistrations}
-            setupDone={setupDone}
-            onMarkRegistrationsDone={() => setRegistrationsMarkedDone(true)}
-            onGoToRegistration={openTaxRegistration}
-            registrationPage={
-              <TaxRegistrationSection
-                registrations={registrations}
-                onAdd={(r) => setRegistrations((prev) => [...prev, r])}
-              />
-            }
+            onOpenSetup={handleOpenSetup}
             setupPage={
-              appPage === 'editor' ? (
-                <NexusSetupEditor
-                  editorMode="existing"
+              appPage === 'wizard' ? (
+                <SetupWizardPage
+                  editorMode={editorMode}
+                  wizardStep={wizardStep}
+                  fpoaStatus={fpoaStatus}
                   nexusRows={nexusRows}
                   questionnaire={questionnaire}
                   onQuestionnaireSubmit={(answers) => {
                     setQuestionnaire(answers)
-                    // Every registered state stays listed; nexus states get the suggested forms.
-                    setNexusRows((rows) =>
-                      rows.map((r) =>
-                        answers.nexus.includes(r.stateCode) ? { ...r, forms: suggestFormsFor(answers, r.stateCode) } : r,
-                      ),
-                    )
+                    setNexusRows(suggestNexusRows(answers))
                   }}
                   onNexusRowsChange={setNexusRows}
-                  onSaveFilingSetup={handleSaveForms}
-                  onBack={backToTaxForms}
-                />
-              ) : appPage === 'active' ? (
-                <DirectTaxActivePage
-                  focus={activeSegment}
-                  fpoaStatus={fpoaStatus}
-                  fpoaSignedAt={fpoaSignedAt}
-                  setups={setups}
                   onFpoaSign={handleFpoaSign}
-                  onViewSetup={openFormsEditor}
-                  onDisable={handleDisable}
-                  onManageRegistrations={() => openTaxRegistration()}
-                  setupDone={setupDone}
-                  onMarkRegistrationsDone={() => setRegistrationsMarkedDone(true)}
+                  onNext={handleWizardNext}
+                  onSaveFilingSetup={handleSaveFilingSetup}
+                  onBack={handleWizardBack}
+                />
+              ) : appPage === 'summary' ? (
+                <DirectTaxSummary
+                  fpoaStatus={fpoaStatus}
+                  setups={filingSetups}
+                  onFpoaSign={handleFpoaSign}
+                  onAddSetup={() => openSetupEditor(null)}
+                  onViewSetup={(id) => openSetupEditor(filingSetups.find((s) => s.id === id) ?? null)}
                 />
               ) : undefined
             }
@@ -2243,22 +1846,9 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
       </div>
 
       {/* Modals */}
-      {showFirstRegistration && (
-        <NewTaxRegistrationForm
-          asModal
-          registeredCodes={[]}
-          onSave={(r) => {
-            setRegistrations([r])
-            setShowFirstRegistration(false)
-            if (!stayAfterRegistration) setSelectedSection('tax-registration')
-          }}
-          onCancel={() => setShowFirstRegistration(false)}
-        />
-      )}
-
       {showAvalaraModal && (
         <AvalaraModal
-          onConnect={handleAvalaraConnect}
+          onConnect={handleAvalalaConnect}
           onCancel={() => setShowAvalaraModal(false)}
         />
       )}
