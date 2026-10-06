@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { NAV_TREE, TAX_NAV_TABS } from './app/data/navigation'
+// Frozen snapshot of v2.0 (2026-10-06). Do not edit: new work goes in src/App-canonical.tsx.
+import { NAV_TREE, TAX_NAV_TABS } from '../app/data/navigation'
 
 /**
  * Canonical version of the Direct Return Filing Settings app.
@@ -201,8 +202,6 @@ const BTN_ICON =
   'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600'
 const LINK =
   'inline-flex flex-shrink-0 items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline'
-// Small uppercase label that heads a group of cards on a page.
-const SECTION_LABEL = 'mb-2.5 text-xs font-semibold uppercase tracking-wider text-gray-500'
 // Compact buttons for small cards such as the setup checklist tiles.
 const BTN_XS_BASE =
   'inline-flex h-7 flex-shrink-0 items-center gap-1 rounded-md px-2.5 text-xs font-medium transition-colors'
@@ -257,8 +256,6 @@ function NavTree() {
 }
 
 // ─── Avalara Modal ────────────────────────────────────
-const AVALARA_LOGO_URL = `${import.meta.env.BASE_URL}brand/avalara-logo.svg`
-
 function AvalaraModal({
   onConnect,
   onCancel,
@@ -278,16 +275,12 @@ function AvalaraModal({
       >
         {/* Header */}
         <div className="px-6 pt-5 pb-4 flex items-start gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 border border-blue-200">
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-blue-600" aria-hidden="true">
+              <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1ZM8 13h8v-2H8v2Zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5Z" />
+            </svg>
+          </div>
           <div className="flex-1 min-w-0">
-            <div className="mb-3 flex items-center gap-2.5">
-              <img src={AVALARA_LOGO_URL} alt="Avalara" className="h-6 w-auto" />
-              <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
-                <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current" aria-hidden="true">
-                  <path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Zm-2 16-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8Z" />
-                </svg>
-                Certified partner
-              </span>
-            </div>
             <h2 id="avalara-title" className="text-base font-semibold text-gray-900 leading-6">
               Connect to Avalara
             </h2>
@@ -367,347 +360,11 @@ function AvalaraModal({
   )
 }
 
-// ─── Bank account (pays the tax due on each return) ───
-type BankAccount = {
-  id: string
-  bank: string
-  name: string
-  last4: string
-  type: 'Checking' | 'Savings'
-  routing: string
-  accountNumber: string
-}
-
-// Accounts already in Zoho Books that can be associated.
-const EXISTING_BANK_ACCOUNTS: BankAccount[] = [
-  { id: 'chase-4821', bank: 'Chase', name: 'Business Checking', last4: '4821', type: 'Checking', routing: '021000021', accountNumber: '000123454821' },
-  { id: 'boa-0937', bank: 'Bank of America', name: 'Operating Account', last4: '0937', type: 'Checking', routing: '026009593', accountNumber: '004471200937' },
-  { id: 'wf-1156', bank: 'Wells Fargo', name: 'Tax Reserve', last4: '1156', type: 'Savings', routing: '121000248', accountNumber: '009812341156' },
-]
-
-function BankAccountModal({
-  current,
-  onSave,
-  onClose,
-}: {
-  current: BankAccount | null
-  onSave: (account: BankAccount) => void
-  onClose: () => void
-}) {
-  const [choice, setChoice] = useState<string>(current?.id ?? EXISTING_BANK_ACCOUNTS[0].id)
-  const [form, setForm] = useState({ bank: '', name: '', routing: '', account: '', type: 'Checking' as BankAccount['type'] })
-  const isNew = choice === 'new'
-  const newValid = form.bank.trim() && form.name.trim() && /^\d{9}$/.test(form.routing) && /^\d{4,17}$/.test(form.account)
-  const save = () => {
-    if (!isNew) {
-      const existing = EXISTING_BANK_ACCOUNTS.find((a) => a.id === choice)
-      if (existing) onSave(existing)
-      return
-    }
-    onSave({
-      id: `new-${form.account.slice(-4)}`,
-      bank: form.bank.trim(),
-      name: form.name.trim(),
-      last4: form.account.slice(-4),
-      type: form.type,
-      routing: form.routing,
-      accountNumber: form.account,
-    })
-  }
-  const field = 'mt-1 block h-9 w-full rounded-md border border-gray-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100'
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="bank-title"
-        className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl"
-      >
-        <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4">
-          <div>
-            <h2 id="bank-title" className="text-base font-semibold text-gray-900">Connect a bank account</h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Avalara debits this account to pay the tax due on each return it files. Nothing is debited until a return is filed.
-            </p>
-          </div>
-          <button onClick={onClose} aria-label="Close" className={`-mr-2 -mt-1 ${BTN_ICON}`}>
-            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex-1 space-y-2 overflow-y-auto px-6 pb-5">
-          <p className="text-xs font-medium text-gray-500">{isNew ? 'New bank account' : 'Bank accounts in Zoho Books'}</p>
-          {!isNew &&
-            EXISTING_BANK_ACCOUNTS.map((a) => (
-              <label key={a.id} className={TILE}>
-                <input
-                  type="radio"
-                  name="bank-account"
-                  checked={choice === a.id}
-                  onChange={() => setChoice(a.id)}
-                  className="h-4 w-4 accent-blue-600"
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-gray-900">{a.bank} · {a.name}</span>
-                  <span className="block text-xs text-gray-500">{a.type} ending in {a.last4}</span>
-                </span>
-              </label>
-            ))}
-
-          {!isNew && (
-            <button onClick={() => setChoice('new')} className={`${LINK} pt-1`}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-              </svg>
-              Add a new bank account
-            </button>
-          )}
-
-          {isNew && (
-            <button
-              onClick={() => setChoice(current?.id ?? EXISTING_BANK_ACCOUNTS[0].id)}
-              className={`${LINK_SM} mb-1`}
-            >
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z" />
-              </svg>
-              Choose an existing account instead
-            </button>
-          )}
-
-          {isNew && (
-            <div className="grid grid-cols-2 gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <label className="col-span-2 text-xs font-medium text-gray-700">
-                Bank name
-                <input className={field} value={form.bank} onChange={(e) => setForm({ ...form, bank: e.target.value })} />
-              </label>
-              <label className="col-span-2 text-xs font-medium text-gray-700">
-                Account nickname
-                <input className={field} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Tax payments" />
-              </label>
-              <label className="text-xs font-medium text-gray-700">
-                Routing number
-                <input
-                  className={field}
-                  inputMode="numeric"
-                  maxLength={9}
-                  value={form.routing}
-                  onChange={(e) => setForm({ ...form, routing: e.target.value.replace(/\D/g, '') })}
-                  placeholder="9 digits"
-                />
-              </label>
-              <label className="text-xs font-medium text-gray-700">
-                Account number
-                <input
-                  className={field}
-                  inputMode="numeric"
-                  maxLength={17}
-                  value={form.account}
-                  onChange={(e) => setForm({ ...form, account: e.target.value.replace(/\D/g, '') })}
-                />
-              </label>
-              <fieldset className="col-span-2">
-                <legend className="text-xs font-medium text-gray-700">Account type</legend>
-                <div className="mt-1.5 flex gap-4">
-                  {(['Checking', 'Savings'] as const).map((t) => (
-                    <label key={t} className="flex items-center gap-2 text-sm text-gray-700">
-                      <input type="radio" name="bank-type" checked={form.type === t} onChange={() => setForm({ ...form, type: t })} className="h-4 w-4 accent-blue-600" />
-                      {t}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">
-          <button onClick={save} disabled={isNew && !newValid} className={BTN_PRIMARY}>
-            {current ? 'Save bank account' : 'Connect bank account'}
-          </button>
-          <button onClick={onClose} className={BTN_SECONDARY}>
-            Cancel
-          </button>
-          <span className="ml-auto flex items-center gap-1.5 text-xs text-gray-500">
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2Zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2Zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2Z" />
-            </svg>
-            Encrypted
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── FPOA Document ────────────────────────────────────
 // The real FPOA, served and signed through an Adobe Acrobat Sign web form.
 const FPOA_ESIGN_URL =
   'https://secure.na1.echosign.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhBH-Mal45Altk9ZpKjo1B8NOnUohmFSu5uEpSq5mJoSsMUeQsbA0xUNvztdZHXKaaU*'
 const ESIGN_ORIGIN = /^https:\/\/[\w.-]+\.(echosign|adobesign)\.com$/
-
-// The FPOA opens in a large modal that hosts the Acrobat Sign document.
-// The FPOA's bank section, in the order the Acrobat Sign form asks for it.
-function FpoaBankDetails({ account }: { account: BankAccount | null }) {
-  const [copied, setCopied] = useState<string | null>(null)
-  const copy = (label: string, value: string) => {
-    navigator.clipboard?.writeText(value).then(
-      () => {
-        setCopied(label)
-        setTimeout(() => setCopied((c) => (c === label ? null : c)), 1500)
-      },
-      () => {},
-    )
-  }
-  if (!account) {
-    return (
-      <p className="text-xs leading-5 text-gray-600">
-        Connect a bank account first. Its details will appear here, ready to copy into the form.
-      </p>
-    )
-  }
-  const rows: [string, string][] = [
-    ['Account name', account.name],
-    ['Bank name', account.bank],
-    ['Account number', account.accountNumber],
-    ['Routing number', account.routing],
-    ['Account type', account.type],
-  ]
-  return (
-    <dl className="space-y-2.5">
-      {rows.map(([label, value]) => (
-        <div key={label}>
-          <dt className="text-xs text-gray-500">{label}</dt>
-          <dd className="mt-0.5 flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2.5 py-1.5">
-            <span className="truncate text-sm font-medium text-gray-900 tabular-nums">{value}</span>
-            <button
-              onClick={() => copy(label, value)}
-              aria-label={`Copy ${label.toLowerCase()}`}
-              className="flex-shrink-0 text-xs font-medium text-blue-600 hover:text-blue-700"
-            >
-              {copied === label ? 'Copied' : 'Copy'}
-            </button>
-          </dd>
-        </div>
-      ))}
-    </dl>
-  )
-}
-
-function FpoaSignModal({
-  open,
-  bankAccount,
-  signed,
-  signing,
-  liveSession,
-  onConfirmSigned,
-  onClose,
-}: {
-  open: boolean
-  bankAccount: BankAccount | null
-  signed: boolean
-  signing: boolean
-  // False when the FPOA was signed on an earlier visit: Adobe's session is gone.
-  liveSession: boolean
-  onConfirmSigned: () => void
-  onClose: () => void
-}) {
-  return (
-    <div className={`fixed inset-0 z-50 items-center justify-center bg-black/40 p-4 ${open ? 'flex' : 'hidden'}`}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="fpoa-modal-title"
-        className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl"
-      >
-        <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-red-50 text-[10px] font-bold text-red-600">
-              PDF
-            </div>
-            <div className="min-w-0">
-              <h2 id="fpoa-modal-title" className="truncate text-sm font-semibold text-gray-900">
-                Funding Power of Attorney (FPOA)
-              </h2>
-              <p className="text-xs text-gray-500">
-                {signed ? 'Signed document' : 'Review and sign with Adobe Acrobat Sign'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <a href={FPOA_ESIGN_URL} target="_blank" rel="noreferrer" className={`${LINK_SM} mr-2`}>
-              Open in new tab
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7ZM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7Z" />
-              </svg>
-            </a>
-            <button onClick={onClose} aria-label="Close" className={BTN_ICON}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {liveSession ? (
-          <div className="flex min-h-0 flex-1">
-            {/* Shown behind the frame until Acrobat Sign paints the document */}
-            <div className="relative min-w-0 flex-1 bg-white">
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
-                <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" aria-hidden="true" />
-                <p className="text-sm text-gray-600">Loading the FPOA from Adobe Acrobat Sign…</p>
-                <p className="text-xs text-gray-500">
-                  Not loading? Your browser may block embedded documents.{' '}
-                  <a href={FPOA_ESIGN_URL} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
-                    Open it in a new tab
-                  </a>
-                </p>
-              </div>
-              <iframe title="FPOA document — Adobe Acrobat Sign" src={FPOA_ESIGN_URL} className="relative h-full w-full border-0" />
-            </div>
-            {!signed && (
-              <aside className="w-72 flex-shrink-0 overflow-y-auto border-l border-gray-200 bg-gray-50 p-4">
-                <h3 className="text-sm font-semibold text-gray-900">Your bank details</h3>
-                <p className="mt-1 mb-3 text-xs leading-5 text-gray-600">
-                  Enter these in the FPOA's "Taxpayer bank account" section. Acrobat Sign doesn't let this page fill them in for you.
-                </p>
-                <FpoaBankDetails account={bankAccount} />
-              </aside>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-gray-50 p-8 text-center">
-            <p className="text-sm font-medium text-gray-900">The signed FPOA is stored in Adobe Acrobat Sign</p>
-            <p className="max-w-md text-sm text-gray-600">
-              Adobe emailed the signed copy to the signer. You can also download it from your Acrobat Sign account.
-            </p>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-5 py-3">
-          <p className="text-xs text-gray-600">
-            {signed
-              ? 'Signed. Avalara is authorized to file and pay direct taxes on your behalf.'
-              : 'Fill in and sign the document above. This updates as soon as Acrobat Sign confirms your signature.'}
-          </p>
-          <div className="flex flex-shrink-0 items-center gap-2">
-            <button onClick={onClose} className={BTN_SECONDARY}>
-              Close
-            </button>
-            {!signed && (
-              <button onClick={onConfirmSigned} disabled={signing} className={BTN_PRIMARY}>
-                {signing ? 'Confirming…' : "I've signed the document"}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ─── Questionnaire Modal ──────────────────────────────
 // A selectable tile: the native input stays for keyboard and screen readers,
@@ -992,15 +649,40 @@ function AddFormModal({
   const catalog = formsForRegion(region.code)
   const [selected, setSelected] = useState<string[]>([])
   const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(true)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const q = query.trim().toLowerCase()
   const options = catalog.filter(
     (f) => !q || f.name.toLowerCase().includes(q) || f.description.toLowerCase().includes(q),
   )
   const isAdded = (name: string) => existingForms.includes(name)
+
   const toggle = (name: string) => {
     if (isAdded(name)) return
     setSelected((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]))
+    setQuery('')
+    inputRef.current?.focus()
+  }
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setOpen(true)
+      setActiveIndex((i) => Math.min(i + 1, options.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter' && open && options[activeIndex]) {
+      e.preventDefault()
+      toggle(options[activeIndex].name)
+    } else if (e.key === 'Escape' && open) {
+      e.stopPropagation()
+      setOpen(false)
+    } else if (e.key === 'Backspace' && !query && selected.length) {
+      setSelected((prev) => prev.slice(0, -1))
+    }
   }
 
   return (
@@ -1009,7 +691,7 @@ function AddFormModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-form-title"
-        className="bg-white w-full max-w-[520px] max-h-[88vh] border border-gray-200 rounded-xl shadow-2xl flex flex-col"
+        className="bg-white w-full max-w-[520px] border border-gray-200 rounded-xl shadow-2xl flex flex-col"
       >
         {/* Header */}
         <div className="px-6 pt-5 pb-4 border-b border-gray-200 flex items-start gap-3">
@@ -1031,67 +713,132 @@ function AddFormModal({
           </button>
         </div>
 
-        {/* Body: search filters the list; the list is always visible */}
-        <div className="flex min-h-0 flex-1 flex-col px-6 py-4">
-          <label htmlFor="form-search" className="sr-only">
-            Search forms
+        {/* Body */}
+        <div className="px-6 py-5">
+          <label htmlFor="form-search" className="text-sm font-medium text-gray-900">
+            Tax forms
           </label>
-          <div className="flex h-9 items-center gap-2 rounded-lg border border-gray-300 bg-white px-2.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-100">
-            <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-gray-400" aria-hidden="true">
-              <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5Zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z" />
-            </svg>
-            <input
-              id="form-search"
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search ${catalog.length} forms for ${region.name}`}
-              className="min-w-0 flex-1 border-0 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400 focus-visible:outline-none"
-            />
-            {query && (
-              <button onClick={() => setQuery('')} aria-label="Clear search" className="text-gray-400 hover:text-gray-600">
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                </svg>
-              </button>
+          <div className="relative mt-2">
+            {/* Combobox field: selected chips + search input */}
+            <div
+              onClick={() => {
+                setOpen(true)
+                inputRef.current?.focus()
+              }}
+              className={`flex min-h-9 flex-wrap items-center gap-1.5 rounded-lg border bg-white px-2.5 py-1.5 cursor-text ${
+                open ? 'border-blue-600 ring-2 ring-blue-100' : 'border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-gray-400" aria-hidden="true">
+                <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5Zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z" />
+              </svg>
+              {selected.map((name) => (
+                <span
+                  key={name}
+                  className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs text-blue-700"
+                >
+                  {name}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggle(name)
+                    }}
+                    aria-label={`Remove ${name}`}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 fill-current" aria-hidden="true">
+                      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                    </svg>
+                  </button>
+                </span>
+              ))}
+              <input
+                id="form-search"
+                ref={inputRef}
+                role="combobox"
+                aria-expanded={open}
+                aria-controls="form-options"
+                aria-autocomplete="list"
+                autoFocus
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setOpen(true)
+                  setActiveIndex(0)
+                }}
+                onFocus={() => setOpen(true)}
+                onBlur={() => setOpen(false)}
+                onKeyDown={onKeyDown}
+                placeholder={selected.length ? '' : 'Search or select a form'}
+                className="min-w-24 flex-1 border-0 bg-transparent py-0.5 text-sm text-gray-800 outline-none placeholder:text-gray-400 focus-visible:outline-none"
+              />
+              <svg
+                viewBox="0 0 24 24"
+                className={`h-4 w-4 flex-shrink-0 fill-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              >
+                <path d="M7 10l5 5 5-5z" />
+              </svg>
+            </div>
+
+            {/* Dropdown */}
+            {open && (
+              <ul
+                id="form-options"
+                role="listbox"
+                aria-multiselectable="true"
+                className="mt-1.5 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-sm"
+              >
+                {options.length === 0 ? (
+                  <li className="px-3 py-3 text-sm text-gray-500">No forms match "{query}".</li>
+                ) : (
+                  options.map((f, i) => {
+                    const added = isAdded(f.name)
+                    const checked = added || selected.includes(f.name)
+                    return (
+                      <li
+                        key={f.name}
+                        role="option"
+                        aria-selected={checked}
+                        aria-disabled={added}
+                        // mousedown, not click, so the input keeps focus and the list stays open
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          toggle(f.name)
+                        }}
+                        onMouseEnter={() => setActiveIndex(i)}
+                        className={`flex items-center gap-3 px-3 py-2 ${
+                          added ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                        } ${i === activeIndex && !added ? 'bg-gray-50' : ''}`}
+                      >
+                        <span
+                          className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border ${
+                            checked ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-white'
+                          }`}
+                          aria-hidden="true"
+                        >
+                          {checked && (
+                            <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm text-gray-800">{f.name}</span>
+                          <span className="block text-xs text-gray-500">{f.description}</span>
+                        </span>
+                        {added && <span className="text-xs text-gray-500">Added</span>}
+                      </li>
+                    )
+                  })
+                )}
+              </ul>
             )}
           </div>
-
-          <ul
-            aria-label={`Tax forms for ${region.name}`}
-            className="mt-3 min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200"
-          >
-            {options.length === 0 ? (
-              <li className="px-3 py-6 text-center text-sm text-gray-500">No forms match "{query}".</li>
-            ) : (
-              options.map((f) => {
-                const added = isAdded(f.name)
-                const checked = added || selected.includes(f.name)
-                return (
-                  <li key={f.name}>
-                    <label
-                      className={`flex items-center gap-3 px-3 py-2.5 ${
-                        added ? 'cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:bg-gray-50'
-                      } ${checked && !added ? 'bg-blue-50/50' : ''}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={added}
-                        onChange={() => toggle(f.name)}
-                        className="h-4 w-4 flex-shrink-0 accent-blue-600"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className={`block text-sm ${added ? 'text-gray-500' : 'text-gray-900'}`}>{f.name}</span>
-                        <span className="block text-xs text-gray-500">{f.description}</span>
-                      </span>
-                      {added && <span className="text-xs text-gray-500">Already added</span>}
-                    </label>
-                  </li>
-                )
-              })
-            )}
-          </ul>
+          <p className="mt-2 text-xs text-gray-500">
+            {catalog.length} forms available for {region.name}
+            {existingForms.length > 0 && ` · ${existingForms.length} already added`}
+          </p>
         </div>
 
         {/* Footer */}
@@ -1102,10 +849,6 @@ function AddFormModal({
           <button onClick={onClose} className={BTN_SECONDARY}>
             Cancel
           </button>
-          <span className="ml-auto text-xs text-gray-500">
-            {selected.length ? `${selected.length} selected` : `${catalog.length} forms available`}
-            {existingForms.length > 0 && ` · ${existingForms.length} already added`}
-          </span>
         </div>
       </div>
     </div>
@@ -1114,9 +857,6 @@ function AddFormModal({
 
 // ─── Nexus Setup Editor ───────────────────────────────
 function NexusSetupEditor({
-  onAddRegistration,
-  allRows,
-  linkedAtOpen,
   nexusRows,
   questionnaire,
   onQuestionnaireSubmit,
@@ -1126,18 +866,12 @@ function NexusSetupEditor({
   editorMode,
 }: {
   editorMode: 'new' | 'existing'
-  // Every registered state, linked or not; states missing from nexusRows are delinked.
-  allRows: NexusRow[]
-  // Ids of the states that were linked when the editor opened (the saved state).
-  linkedAtOpen: string[]
   nexusRows: NexusRow[]
   questionnaire: QuestionnaireAnswers | null
   onQuestionnaireSubmit: (answers: QuestionnaireAnswers) => void
   onNexusRowsChange: (rows: NexusRow[]) => void
   onSaveFilingSetup: () => void
   onBack: () => void
-  // Opens the new tax registration modal; the new state joins the list below.
-  onAddRegistration: () => void
 }) {
   const [showQuestionnaire, setShowQuestionnaire] = useState(false)
   const [addingFormFor, setAddingFormFor] = useState<string | null>(null)
@@ -1155,67 +889,6 @@ function NexusSetupEditor({
   const removeForm = (rowId: string, form: string) =>
     onNexusRowsChange(nexusRows.map((r) => (r.id === rowId ? { ...r, forms: r.forms.filter((f) => f !== form) } : r)))
 
-  // Unsaved changes: compare the working rows with what was last saved.
-  const snapshot = (rows: NexusRow[]) => JSON.stringify(rows.map((r) => [r.id, [...r.forms].sort()]))
-  const savedRows = allRows.filter((r) => linkedAtOpen.includes(r.id))
-  const changeCount = (() => {
-    let n = 0
-    const ids = new Set([...savedRows.map((r) => r.id), ...nexusRows.map((r) => r.id)])
-    ids.forEach((id) => {
-      const a = savedRows.find((r) => r.id === id)
-      const b = nexusRows.find((r) => r.id === id)
-      if (!a || !b) n += 1
-      else {
-        const added = b.forms.filter((f) => !a.forms.includes(f)).length
-        const removed = a.forms.filter((f) => !b.forms.includes(f)).length
-        n += added + removed
-      }
-    })
-    return n
-  })()
-  const dirty = snapshot(savedRows) !== snapshot(nexusRows)
-  const [confirmLeave, setConfirmLeave] = useState(false)
-  const save = () => {
-    if (dirty) onSaveFilingSetup()
-  }
-  const leave = () => (dirty ? setConfirmLeave(true) : onBack())
-  const discard = () => onNexusRowsChange(savedRows)
-  // Ctrl/⌘ + S saves without leaving the keyboard.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault()
-        save()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  })
-
-  const [menuFor, setMenuFor] = useState<string | null>(null)
-  const [confirmDelink, setConfirmDelink] = useState<NexusRow | null>(null)
-  const delinkedRows = allRows.filter((r) => !nexusRows.some((n) => n.id === r.id))
-  const delink = (row: NexusRow) => {
-    onNexusRowsChange(nexusRows.filter((r) => r.id !== row.id))
-    setConfirmDelink(null)
-  }
-  const linkAgain = (row: NexusRow) => {
-    // Keep the registration order.
-    onNexusRowsChange(allRows.filter((r) => r.id === row.id || nexusRows.some((n) => n.id === r.id)).map((r) => nexusRows.find((n) => n.id === r.id) ?? r))
-  }
-  // Close the row menu on any outside click or Escape.
-  useEffect(() => {
-    if (!menuFor) return
-    const close = () => setMenuFor(null)
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
-    document.addEventListener('click', close)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('click', close)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [menuFor])
-
   return (
     <div className="h-full bg-white flex flex-col">
         {/* Header */}
@@ -1229,10 +902,7 @@ function NexusSetupEditor({
                 Choose the tax forms to file for each state you are registered in.
               </p>
             </div>
-            <button onClick={leave} className={LINK}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z" />
-              </svg>
+            <button onClick={onBack} className={LINK}>
               Back
             </button>
           </div>
@@ -1241,196 +911,101 @@ function NexusSetupEditor({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 bg-gray-50">
-            <div className="space-y-8">
-              {/* Optional helper, set apart from the forms below */}
+            <div className="space-y-4">
               {showQuestionnaireCard && (
-                <div className="flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-blue-100">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-blue-600" aria-hidden="true">
-                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm0 16H5V5h14v14ZM7 7h10v2H7V7Zm0 4h10v2H7v-2Zm0 4h6v2H7v-2Z" />
-                    </svg>
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-medium text-gray-900">
-                      Tax questionnaire
-                      <span className="ml-1.5 text-xs font-normal text-gray-500">Optional</span>
-                    </h4>
-                    <p className="mt-0.5 text-xs text-gray-600">
-                      Answer a few questions about your registered regions to get tax form suggestions for each nexus.
-                    </p>
-                    <button onClick={() => setShowQuestionnaire(true)} className={`${LINK_SM} mt-2`}>
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white">
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-blue-600" aria-hidden="true">
+                          <path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm0 16H5V5h14v14ZM7 7h10v2H7V7Zm0 4h10v2H7v-2Zm0 4h6v2H7v-2Z" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-gray-900">
+                          Tax questionnaire
+                          <span className="ml-1.5 font-normal text-gray-500">(Optional)</span>
+                        </p>
+                        <p className="mt-0.5 text-xs text-gray-600">
+                          Answer a few questions about your registered regions to get tax form suggestions for each nexus.
+                        </p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowQuestionnaire(true)} className={LINK_SM}>
                       Answer questionnaire
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                        <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                      </svg>
                     </button>
                   </div>
                 </div>
               )}
 
-              <section aria-labelledby="nexus-forms-heading">
-                <div className="flex items-end justify-between gap-4 border-b border-gray-200 pb-3">
-                  <div>
-                    <h4 id="nexus-forms-heading" className="text-sm font-semibold text-gray-900">
-                      Nexus and tax forms
-                    </h4>
-                    <p className="mt-0.5 text-xs text-gray-600">
-                      {questionnaire
-                        ? "Based on your answers, we've suggested tax forms for each state below. Review or change them."
-                        : 'Add the tax forms to file for each of your registered states.'}
-                    </p>
+              <div className="space-y-3">
+                <h4 className="text-xs font-medium text-gray-900">Configure nexus and tax forms</h4>
+                <p className="text-xs text-gray-600">
+                  {questionnaire
+                    ? "Based on your answers, we've suggested the nexus states and tax forms below. Review, modify, or add new nexus entries."
+                    : showQuestionnaireCard
+                      ? 'Add the tax forms to file for each of your registered regions, or answer the questionnaire to get suggestions.'
+                      : 'Add the tax forms to file for each of your registered regions.'}
+                </p>
+
+                <div className="flex items-center gap-2">
+                  {questionnaire && (
+                  <div className="inline-flex items-center gap-1 rounded-full bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 text-xs">
+                    <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 fill-current">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                    </svg>
+                    Auto-suggested from your questionnaire
                   </div>
-                  <div className="flex flex-shrink-0 items-center gap-2">
-                    {questionnaire && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs text-green-700">
-                        <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 fill-current" aria-hidden="true">
-                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                        </svg>
-                        Suggested from your questionnaire
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-500">
-                      {nexusRows.length} state{nexusRows.length !== 1 ? 's' : ''}
-                    </span>
-                    <span className="h-4 w-px bg-gray-200" aria-hidden="true" />
-                    <button onClick={onAddRegistration} className={LINK_SM}>
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                      </svg>
-                      Add tax registration
-                    </button>
-                  </div>
+                  )}
+                  <span className="text-xs text-gray-500">{nexusRows.length} nexus state{nexusRows.length !== 1 ? 's' : ''}</span>
                 </div>
 
-                <div className="mt-4 space-y-2">
-                  {nexusRows.length === 0 && (
-                    <p className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-6 text-center text-xs text-gray-500">
-                      No states are linked to Direct Return Filing.
-                    </p>
-                  )}
+                <div className="space-y-2">
                   {nexusRows.map((row) => (
-                    <div key={row.id} className="rounded-lg border border-gray-200 bg-white p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-xs font-bold text-blue-600">
-                          {row.stateCode}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium leading-8 text-gray-900">{row.state}</p>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {row.forms.length === 0 && <span className="text-xs text-gray-500">No forms added yet.</span>}
-                            {row.forms.map((form) => (
-                              <span
-                                key={form}
-                                className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs text-blue-600"
-                              >
-                                {form}
-                                <button onClick={() => removeForm(row.id, form)} aria-label={`Remove ${form}`} className="text-blue-600 hover:text-blue-700">
-                                  <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 fill-current" aria-hidden="true">
-                                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                                  </svg>
-                                </button>
-                              </span>
-                            ))}
+                    <div key={row.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">
+                            {row.stateCode}
                           </div>
+                          <span className="text-xs font-medium text-gray-800">{row.state}</span>
                         </div>
-                        <div className="flex flex-shrink-0 items-center gap-1">
-                          <button onClick={() => setAddingFormFor(row.id)} className={BTN_XS_PRIMARY}>
-                            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                            </svg>
-                            Add form
-                          </button>
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setMenuFor(menuFor === row.id ? null : row.id)
-                              }}
-                              aria-haspopup="menu"
-                              aria-expanded={menuFor === row.id}
-                              aria-label={`More options for ${row.state}`}
-                              className={`${BTN_ICON} h-7 w-7`}
-                            >
-                              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-                                <path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
+                      </div>
+                      <div className="ml-10 flex flex-wrap items-center gap-1.5">
+                        {row.forms.length === 0 && (
+                          <span className="text-xs text-gray-500">No forms added yet.</span>
+                        )}
+                        {row.forms.map((form) => (
+                          <span
+                            key={form}
+                            className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-600 text-xs px-2.5 py-0.5 rounded-full"
+                          >
+                            {form}
+                            <button onClick={() => removeForm(row.id, form)} aria-label={`Remove ${form}`} className="text-blue-600 hover:text-blue-700">
+                              <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 fill-current">
+                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                               </svg>
                             </button>
-                            {menuFor === row.id && (
-                              <div
-                                role="menu"
-                                className="absolute right-0 top-full z-20 mt-1 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-                              >
-                                <button
-                                  role="menuitem"
-                                  disabled={row.forms.length === 0}
-                                  onClick={() => onNexusRowsChange(nexusRows.map((r) => (r.id === row.id ? { ...r, forms: [] } : r)))}
-                                  className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white"
-                                >
-                                  Clear all forms
-                                </button>
-                                <button
-                                  role="menuitem"
-                                  onClick={() => setConfirmDelink(row)}
-                                  className="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                                >
-                                  Delink state
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                          </span>
+                        ))}
+                        <button onClick={() => setAddingFormFor(row.id)} className={LINK_SM}>
+                          + Add form
+                        </button>
                       </div>
                     </div>
                   ))}
-
-                  {delinkedRows.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 pt-1 text-xs text-gray-500">
-                      <span>Delinked:</span>
-                      {delinkedRows.map((r) => (
-                        <span key={r.id} className="inline-flex items-center gap-1.5">
-                          {r.state}
-                          <button onClick={() => linkAgain(r)} className={LINK_SM}>
-                            Link again
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </section>
+              </div>
 
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={onSaveFilingSetup}
+                  className={BTN_PRIMARY}
+                >
+                  Save setup
+                </button>
+              </div>
             </div>
-        </div>
-
-        {/* Save bar: always in view, shows what will be saved */}
-        <div className="flex items-center justify-between gap-4 border-t border-gray-200 bg-white px-6 py-3">
-          <p className="flex items-center gap-2 text-xs text-gray-600" aria-live="polite">
-            {dirty ? (
-              <>
-                <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
-                {changeCount} unsaved change{changeCount !== 1 ? 's' : ''}
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-green-600" aria-hidden="true">
-                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                </svg>
-                All changes saved
-              </>
-            )}
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="hidden text-xs text-gray-400 sm:inline">
-              <kbd className="rounded border border-gray-200 bg-gray-50 px-1 font-sans">⌘/Ctrl</kbd>{' '}
-              <kbd className="rounded border border-gray-200 bg-gray-50 px-1 font-sans">S</kbd> to save
-            </span>
-            <button onClick={discard} disabled={!dirty} className={`${BTN_SECONDARY} disabled:opacity-50`}>
-              Discard
-            </button>
-            <button onClick={save} disabled={!dirty} className={BTN_PRIMARY}>
-              Save changes
-            </button>
-          </div>
         </div>
 
       {addingFormFor && (() => {
@@ -1444,56 +1019,6 @@ function NexusSetupEditor({
           />
         ) : null
       })()}
-
-      {confirmLeave && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div role="alertdialog" aria-modal="true" aria-labelledby="leave-title" className="w-full max-w-md rounded-xl border border-gray-200 bg-white shadow-2xl">
-            <div className="px-6 pt-5 pb-4">
-              <h2 id="leave-title" className="text-base font-semibold text-gray-900">
-                Save your changes?
-              </h2>
-              <p className="mt-1.5 text-sm text-gray-600">
-                You have {changeCount} unsaved change{changeCount !== 1 ? 's' : ''} to your tax forms.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 rounded-b-xl border-t border-gray-200 bg-gray-50 px-6 py-4">
-              <button onClick={() => setConfirmLeave(false)} className={`${BTN_GHOST} mr-auto`}>
-                Keep editing
-              </button>
-              <button onClick={onBack} className={BTN_SECONDARY}>
-                Discard
-              </button>
-              <button onClick={onSaveFilingSetup} className={BTN_PRIMARY}>
-                Save and go back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmDelink && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div role="alertdialog" aria-modal="true" aria-labelledby="delink-title" className="w-full max-w-md rounded-xl border border-gray-200 bg-white shadow-2xl">
-            <div className="px-6 pt-5 pb-4">
-              <h2 id="delink-title" className="text-base font-semibold text-gray-900">
-                Delink {confirmDelink.state}?
-              </h2>
-              <p className="mt-1.5 text-sm text-gray-600">
-                Avalara will stop filing returns for {confirmDelink.state}. The state stays in your tax registrations, and you can link it again
-                later. Changes apply when you save.
-              </p>
-            </div>
-            <div className="flex items-center justify-end gap-2 rounded-b-xl border-t border-gray-200 bg-gray-50 px-6 py-4">
-              <button onClick={() => setConfirmDelink(null)} className={BTN_SECONDARY}>
-                Cancel
-              </button>
-              <button onClick={() => delink(confirmDelink)} className={`${BTN_BASE} bg-red-600 px-4 text-white hover:bg-red-700`}>
-                Delink state
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showQuestionnaire && (
         <QuestionnaireModal
@@ -1563,8 +1088,6 @@ function DisableDirectTaxModal({ onConfirm, onCancel }: { onConfirm: () => void;
 
 function DirectTaxActivePage({
   focus,
-  bankAccount,
-  onSaveBankAccount,
   fpoaStatus,
   fpoaSignedAt,
   setups,
@@ -1578,8 +1101,6 @@ function DirectTaxActivePage({
   setupDone: boolean[]
   onMarkRegistrationsDone: () => void
   focus: DirectTaxSegment
-  bankAccount: BankAccount | null
-  onSaveBankAccount: (account: BankAccount) => void
   fpoaStatus: FpoaStatus
   fpoaSignedAt: Date | null
   setups: FilingSetup[]
@@ -1588,18 +1109,13 @@ function DirectTaxActivePage({
   onDisable: () => void
   onManageRegistrations: () => void
 }) {
-  const [showBankModal, setShowBankModal] = useState(false)
-  const [fpoaModalOpen, setFpoaModalOpen] = useState(false)
-  // Once opened, the Acrobat Sign frame stays mounted so the signed agreement can be
-  // reopened in the same session (with Adobe's download option).
-  const [fpoaFrameMounted, setFpoaFrameMounted] = useState(false)
-  const openFpoa = () => {
-    setFpoaFrameMounted(true)
-    setFpoaModalOpen(true)
-  }
+  const [showSignedDocument, setShowSignedDocument] = useState(false)
+  // Whether the Acrobat Sign form was loaded on this visit. After signing it keeps
+  // showing the signed agreement (with Adobe's download option), so it stays mounted.
+  const [esignLoaded, setEsignLoaded] = useState(fpoaStatus === 'idle')
   // Acrobat Sign posts an ESIGN event to the parent page once the form is signed.
   useEffect(() => {
-    if (fpoaStatus !== 'idle' || !fpoaFrameMounted) return
+    if (fpoaStatus !== 'idle') return
     const onMessage = (e: MessageEvent) => {
       if (!ESIGN_ORIGIN.test(e.origin)) return
       try {
@@ -1611,7 +1127,7 @@ function DirectTaxActivePage({
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [fpoaStatus, fpoaFrameMounted])
+  }, [fpoaStatus])
   const [confirmDisable, setConfirmDisable] = useState(false)
   const [expanded, setExpanded] = useState<string[]>([])
   const signed = fpoaStatus === 'processing'
@@ -1628,8 +1144,8 @@ function DirectTaxActivePage({
   }, [focus])
 
   return (
-    <div className="space-y-8 p-6">
-      {/* Section 1 — Status */}
+    <div className="space-y-5 p-6">
+      {/* Status */}
       <section aria-labelledby="direct-tax-status" className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="flex items-start justify-between gap-4 px-6 py-5">
           <div className="min-w-0">
@@ -1649,78 +1165,107 @@ function DirectTaxActivePage({
         </div>
       </section>
 
-      {/* Section 2 — Setup: progress (until every step is done), bank account and FPOA */}
-      <div>
-        <h2 className={SECTION_LABEL}>Setup and authorization</h2>
-        <div className="space-y-3">
+      {/* Setup progress — until every step is done */}
       {setupDone.some((d) => !d) && (
-        <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
+        <section className="rounded-lg border border-gray-200 bg-white px-5 py-4">
           <SetupChecklist
             done={setupDone}
             title="Setup progress"
             intro="Each step is marked completed as soon as you finish it."
-            defaultCollapsed
             actions={{
               0: { label: 'Add Tax Registration', onClick: onManageRegistrations },
-              2: { label: 'Connect bank account', onClick: () => setShowBankModal(true) },
-              3: { label: 'View and sign FPOA', onClick: openFpoa },
-              4: { label: 'Add tax forms', onClick: () => scrollTo('forms') },
+              2: { label: 'Sign FPOA', onClick: () => scrollTo('fpoa') },
+              3: { label: 'Add tax forms', onClick: () => scrollTo('forms') },
             }}
             markable={{ 0: onMarkRegistrationsDone }}
           />
-        </div>
+        </section>
       )}
 
-      {/* Bank account and FPOA, one row each */}
-      <div aria-label="Payment and authorization" className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
-        <div id="segment-bank" className="flex items-center gap-4 px-5 py-3">
-          <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-gray-400" aria-hidden="true">
-            <path d="M4 10h3v7H4v-7Zm6.5 0h3v7h-3v-7ZM2 19h20v3H2v-3Zm15-9h3v7h-3v-7ZM12 1 2 6v2h20V6L12 1Z" />
-          </svg>
-          <h2 className="w-36 flex-shrink-0 text-sm font-medium text-gray-900">Bank account</h2>
-          <p className="min-w-0 flex-1 truncate text-sm text-gray-600">
-            {bankAccount
-              ? `${bankAccount.bank} · ${bankAccount.name} ••${bankAccount.last4}`
-              : 'Not connected'}
-          </p>
-          {bankAccount ? <StatusPill tone="success">Connected</StatusPill> : <StatusPill tone="warning">Pending</StatusPill>}
-          <button onClick={() => setShowBankModal(true)} className={`${LINK_SM} w-28 justify-end whitespace-nowrap`}>
-            {bankAccount ? 'Change' : 'Connect'}
-          </button>
-        </div>
-
-        <div id="segment-fpoa" className="flex scroll-mt-6 items-center gap-4 px-5 py-3">
-          <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-gray-400" aria-hidden="true">
-            <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm2 16H8v-2h8v2Zm0-4H8v-2h8v2Zm-3-5V3.5L18.5 9H13Z" />
-          </svg>
-          <h2 className="w-36 flex-shrink-0 text-sm font-medium text-gray-900">FPOA</h2>
-          <p className="min-w-0 flex-1 truncate text-sm text-gray-600">
-            {signed
-              ? `Signed${fpoaSignedAt ? ` on ${formatDate(fpoaSignedAt)}` : ''}`
-              : 'Authorizes Avalara to file and pay on your behalf'}
-          </p>
-          {signed ? (
-            <StatusPill tone="success">Signed</StatusPill>
-          ) : fpoaStatus === 'signing' ? (
-            <StatusPill tone="neutral">Signing</StatusPill>
-          ) : (
-            <StatusPill tone="warning">Pending</StatusPill>
+      {/* Segment: FPOA signing — the document is read inline, then collapses once signed */}
+      <section
+        id="segment-fpoa"
+        aria-labelledby="fpoa-heading"
+        className="scroll-mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white"
+      >
+        <div className="flex items-center justify-between gap-4 px-5 py-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 id="fpoa-heading" className="text-sm font-semibold text-gray-900">Form POA (Power of Attorney)</h2>
+              {signed ? (
+                <StatusPill tone="success">Signed</StatusPill>
+              ) : fpoaStatus === 'signing' ? (
+                <StatusPill tone="neutral">Signing</StatusPill>
+              ) : (
+                <StatusPill tone="warning">Pending</StatusPill>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-gray-600">
+              {signed
+                ? `Signed${fpoaSignedAt ? ` on ${formatDate(fpoaSignedAt)}` : ''}. Avalara is authorized to file direct tax returns on your behalf.`
+                : "Review the FPOA below and sign it so Avalara can file returns on your behalf. Returns won't be filed until it's signed."}
+            </p>
+          </div>
+          {signed && (
+            <button
+              onClick={() => setShowSignedDocument((v) => !v)}
+              aria-expanded={showSignedDocument}
+              aria-controls="fpoa-document"
+              className={`${LINK} whitespace-nowrap`}
+            >
+              {showSignedDocument ? 'Hide signed document' : 'View signed document'}
+              <svg
+                viewBox="0 0 24 24"
+                className={`h-4 w-4 fill-current transition-transform duration-200 ${showSignedDocument ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              >
+                <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+              </svg>
+            </button>
           )}
-          <button
-            onClick={openFpoa}
-            disabled={fpoaStatus === 'signing'}
-            className={`${LINK_SM} w-28 justify-end whitespace-nowrap disabled:opacity-50`}
-          >
-            {signed ? 'View document' : 'View and sign'}
-          </button>
         </div>
-      </div>
-        </div>
-      </div>
 
-      {/* Section 3 — Tax forms */}
-      <div>
-      <h2 className={SECTION_LABEL}>Tax forms</h2>
+        {/* The live Acrobat Sign form: read and sign the real FPOA right here */}
+        {(esignLoaded || !signed) && (
+          <div id="fpoa-document" className={`border-t border-gray-200 ${signed && !showSignedDocument ? 'hidden' : ''}`}>
+            <div className="flex items-center justify-between bg-gray-50 px-5 py-2">
+              <p className="text-xs font-medium text-gray-700">FPOA · Adobe Acrobat Sign</p>
+              <a href={FPOA_ESIGN_URL} target="_blank" rel="noreferrer" className={LINK_SM}>
+                Open in new tab
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
+                  <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7ZM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7Z" />
+                </svg>
+              </a>
+            </div>
+            <iframe
+              title="FPOA document — sign with Adobe Acrobat Sign"
+              src={FPOA_ESIGN_URL}
+              onLoad={() => setEsignLoaded(true)}
+              className="block h-[44rem] w-full border-0 border-t border-gray-200 bg-white"
+            />
+            {!signed && (
+              <div className="flex items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-5 py-3">
+                <p className="text-xs text-gray-600">
+                  Fill in and sign the document above. This page updates as soon as Acrobat Sign confirms your signature.
+                </p>
+                <button onClick={onFpoaSign} disabled={fpoaStatus === 'signing'} className={BTN_PRIMARY}>
+                  {fpoaStatus === 'signing' ? 'Confirming…' : "I've signed the document"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Signed on an earlier visit: the agreement lives in Acrobat Sign */}
+        {signed && !esignLoaded && showSignedDocument && (
+          <div id="fpoa-document" className="border-t border-gray-200 bg-gray-50 px-5 py-4">
+            <p className="text-sm text-gray-700">
+              Adobe Acrobat Sign emailed the signed FPOA to the signer. You can also find it in your Acrobat Sign account.
+            </p>
+          </div>
+        )}
+      </section>
+
       {/* Segment: tax forms */}
       <section
         id="segment-forms"
@@ -1741,7 +1286,7 @@ function DirectTaxActivePage({
               Add nexus regions and manage the eligible forms for each nexus from one place.
             </p>
           </div>
-          <button onClick={onManageRegistrations} className={BTN_SECONDARY}>
+          <button onClick={onManageRegistrations} className={BTN_PRIMARY}>
             <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
               <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
             </svg>
@@ -1841,9 +1386,12 @@ function DirectTaxActivePage({
                           e.stopPropagation()
                           onViewSetup(setup.id)
                         }}
-                        className={`${hasForms ? LINK_SM : BTN_XS_PRIMARY} whitespace-nowrap`}
+                        className={`${LINK} whitespace-nowrap`}
                       >
-                        {hasForms ? 'Edit tax forms' : 'Add tax forms'}
+                        Add tax forms
+                        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+                          <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+                        </svg>
                       </button>
                     </td>
                   </tr>
@@ -1875,30 +1423,6 @@ function DirectTaxActivePage({
         </table>
         )}
       </section>
-      </div>
-
-      {showBankModal && (
-        <BankAccountModal
-          current={bankAccount}
-          onSave={(account) => {
-            onSaveBankAccount(account)
-            setShowBankModal(false)
-          }}
-          onClose={() => setShowBankModal(false)}
-        />
-      )}
-
-      {(fpoaFrameMounted || (fpoaModalOpen && signed)) && (
-        <FpoaSignModal
-          open={fpoaModalOpen}
-          bankAccount={bankAccount}
-          signed={signed}
-          signing={fpoaStatus === 'signing'}
-          liveSession={fpoaFrameMounted}
-          onConfirmSigned={onFpoaSign}
-          onClose={() => setFpoaModalOpen(false)}
-        />
-      )}
 
       {confirmDisable && (
         <DisableDirectTaxModal
@@ -2183,8 +1707,7 @@ function NewTaxRegistrationForm({
                 New Tax Registration
               </h2>
               <p className="mt-1 text-sm leading-5 text-gray-600">
-                Direct tax is filed only in the states you are registered in.
-                {registeredCodes.length === 0 ? ' Add your first registration to get started.' : ''}
+                Direct tax is filed only in the states you are registered in. Add your first registration to get started.
               </p>
             </div>
             <button onClick={onCancel} aria-label="Close" className={`-mr-2 -mt-1 ${BTN_ICON}`}>
@@ -2227,36 +1750,25 @@ const SETUP_STEPS: { title: string; short: string; description: string; icon: st
   {
     title: 'Add your tax registrations',
     short: 'Tax registrations',
-    description:
-      'Add every state where your business is registered for tax. Direct Return Filing only files returns for the states you add here.',
+    description: 'Add the states where you file returns.',
     icon: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5Z',
   },
   {
     title: 'Connect to Avalara',
     short: 'Connect Avalara',
-    description:
-      'Accept the Zoho Books and Avalara terms to connect your account. Avalara is the certified partner that prepares and files your returns.',
+    description: 'Link Avalara so it can file returns for you.',
     icon: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1ZM8 13h8v-2H8v2Zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5Z',
-  },
-  {
-    title: 'Connect a bank account',
-    short: 'Bank account',
-    description:
-      'Choose the bank account Avalara debits to pay the tax due on each return. Nothing is debited until a return is filed.',
-    icon: 'M4 10h3v7H4v-7Zm6.5 0h3v7h-3v-7ZM2 19h20v3H2v-3Zm15-9h3v7h-3v-7ZM12 1 2 6v2h20V6L12 1Z',
   },
   {
     title: 'Sign the FPOA',
     short: 'Sign FPOA',
-    description:
-      'Review and sign the Funding Power of Attorney in Adobe Acrobat Sign. It authorizes Avalara to file returns and pay taxes from your bank account.',
+    description: 'Authorize Avalara to file on your behalf.',
     icon: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
   },
   {
     title: 'Choose forms for each state',
     short: 'Tax forms',
-    description:
-      'Pick the returns to file for each registered state. Answer a short, optional questionnaire to get suggested forms.',
+    description: 'Pick the returns to file in each state.',
     icon: 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm2 16H8v-2h8v2Zm0-4H8v-2h8v2Zm-3-5V3.5L18.5 9H13Z',
   },
 ]
@@ -2269,10 +1781,7 @@ function SetupChecklist({
   actions = {},
   markable = {},
   hints = {},
-  defaultCollapsed = false,
 }: {
-  // Start with the step list hidden (used once Direct Return Filing is active).
-  defaultCollapsed?: boolean
   done: boolean[]
   title: string
   intro: string
@@ -2283,9 +1792,6 @@ function SetupChecklist({
   hints?: Partial<Record<number, string>>
 }) {
   const doneCount = done.filter(Boolean).length
-  // Only the next unfinished step gets a primary button; other shortcuts are links.
-  const nextIndex = done.findIndex((d) => !d)
-  const [collapsed, setCollapsed] = useState(defaultCollapsed)
 
   return (
     <div>
@@ -2300,66 +1806,20 @@ function SetupChecklist({
         <span className="text-xs text-gray-500 tabular-nums">
           {doneCount} of {SETUP_STEPS.length} completed
         </span>
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          aria-expanded={!collapsed}
-          aria-controls="setup-steps"
-          aria-label={collapsed ? 'Show setup steps' : 'Hide setup steps'}
-          className={`-mr-1.5 ${BTN_ICON} h-7 w-7`}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            className={`h-5 w-5 fill-current transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`}
-            aria-hidden="true"
-          >
-            <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
-          </svg>
-        </button>
       </div>
-      {collapsed ? (
-        nextIndex === -1 ? (
-          <p className="mt-1 text-xs text-gray-600">All steps are completed.</p>
-        ) : (
-          // What's next: set off by a divider, with the step's number, name, description and shortcut
-          <div className="-mx-5 -mb-4 mt-4 flex items-center gap-3 rounded-b-lg border-t border-gray-200 bg-blue-50/60 px-5 py-3">
-            <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
-              {nextIndex + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-2">
-                <span className="rounded bg-blue-100 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-blue-700">
-                  Up next
-                </span>
-                <span className="text-sm font-medium text-gray-900">{SETUP_STEPS[nextIndex].short}</span>
-              </p>
-              <p className="mt-0.5 truncate text-xs text-gray-600">{SETUP_STEPS[nextIndex].description}</p>
-            </div>
-            {actions[nextIndex] && (
-              <button onClick={actions[nextIndex]!.onClick} className={BTN_XS_PRIMARY}>
-                {actions[nextIndex]!.label}
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                  <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                </svg>
-              </button>
-            )}
-          </div>
-        )
-      ) : (
-        <p className="mt-1 text-xs text-gray-600">{intro}</p>
-      )}
+      <p className="mt-1 text-xs text-gray-600">{intro}</p>
 
       {/* One row per step: number · name and description · status or actions, right-aligned */}
-      {!collapsed && (
-      <ol id="setup-steps" className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200">
+      <ol className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200">
         {SETUP_STEPS.map((step, i) => {
           const isDone = done[i]
           const action = actions[i]
           const markDone = markable[i]
           const hint = hints[i]
           return (
-            <li key={step.title} className="flex items-center gap-3 px-4 py-3">
+            <li key={step.title} className="flex min-h-12 items-center gap-3 px-4 py-2">
               <span
-                className={`flex h-5 w-5 flex-shrink-0 self-start mt-px items-center justify-center rounded-full text-xs font-semibold ${
+                className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                   isDone ? 'bg-green-600 text-white' : 'border border-gray-300 text-gray-500'
                 }`}
                 aria-hidden="true"
@@ -2372,13 +1832,11 @@ function SetupChecklist({
                   i + 1
                 )}
               </span>
-              <div className="min-w-0 flex-1">
-                <h4 className={`text-sm font-medium leading-5 ${isDone ? 'text-gray-500' : 'text-gray-900'}`}>
-                  {step.short}
-                  <span className="sr-only">{isDone ? ' (completed)' : ' (not completed)'}</span>
-                </h4>
-                <p className="mt-0.5 max-w-2xl text-xs leading-5 text-gray-500">{step.description}</p>
-              </div>
+              <p className="min-w-0 flex-1 text-sm">
+                <span className={`font-medium ${isDone ? 'text-gray-500' : 'text-gray-900'}`}>{step.short}</span>
+                <span className="sr-only">{isDone ? ' (completed)' : ' (not completed)'}</span>
+                <span className="ml-2 text-xs text-gray-500">{step.description}</span>
+              </p>
               <div className="flex flex-shrink-0 items-center gap-4">
                 {isDone ? (
                   <span className="text-xs font-medium text-green-700">Completed</span>
@@ -2390,7 +1848,7 @@ function SetupChecklist({
                       </button>
                     )}
                     {action ? (
-                      <button onClick={action.onClick} className={i === nextIndex ? BTN_XS_PRIMARY : LINK_SM}>
+                      <button onClick={action.onClick} className={BTN_XS_PRIMARY}>
                         {action.label}
                       </button>
                     ) : (
@@ -2403,7 +1861,6 @@ function SetupChecklist({
           )
         })}
       </ol>
-      )}
     </div>
   )
 }
@@ -2539,12 +1996,13 @@ function DirectTaxSettings({
                   <h2 className="text-xs font-normal text-gray-600">
                     Set up automatic direct tax calculation by integrating with Zoho Books or Avalara.
                   </h2>
-                  <button
-                    onClick={() => setShowDetails((v) => !v)}
-                    aria-expanded={showDetails}
-                    aria-controls="direct-tax-details"
-                    className={`${LINK_SM} mt-1`}
-                  >
+                </div>
+                <button
+                  onClick={() => setShowDetails((v) => !v)}
+                  aria-expanded={showDetails}
+                  aria-controls="direct-tax-details"
+                  className={`${LINK_SM} min-w-[5.5rem] justify-end whitespace-nowrap`}
+                >
                   {showDetails ? 'Hide details' : 'Learn more'}
                   <svg
                     viewBox="0 0 24 24"
@@ -2553,8 +2011,7 @@ function DirectTaxSettings({
                   >
                     <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
                   </svg>
-                  </button>
-                </div>
+                </button>
                 <button onClick={onOpenSetup} className={BTN_PRIMARY}>
                   Set up Direct Return Filing
                 </button>
@@ -2588,13 +2045,13 @@ function DirectTaxSettings({
               <SetupChecklist
                 done={setupDone}
                 title="Setup progress"
-                intro="Start with your tax registrations. Avalara files your direct tax returns automatically once all five steps are done."
+                intro="Start with your tax registrations. Avalara files your direct tax returns automatically once all four steps are done."
                 actions={{
                   0: { label: 'Add Tax Registration', onClick: () => onGoToRegistration(true) },
                   1: { label: 'Set up', onClick: onOpenSetup },
                 }}
                 markable={{ 0: onMarkRegistrationsDone }}
-                hints={{ 2: 'After connecting', 3: 'After connecting', 4: 'After connecting' }}
+                hints={{ 2: 'After connecting', 3: 'After connecting' }}
               />
             </section>
           </div>
@@ -2630,7 +2087,6 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
   const [registrations, setRegistrations] = useState<TaxRegistration[]>([])
   const [taxForms, setTaxForms] = useState<Record<string, string[]>>({})
   const [savedQuestionnaire, setSavedQuestionnaire] = useState<QuestionnaireAnswers | null>(null)
-  const [bankAccount, setBankAccount] = useState<BankAccount | null>(null)
   const [showFirstRegistration, setShowFirstRegistration] = useState(false)
   // Step 1 is the only step that can also be ticked by hand.
   const [registrationsMarkedDone, setRegistrationsMarkedDone] = useState(false)
@@ -2652,16 +2108,13 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
   const [nexusRows, setNexusRows] = useState<NexusRow[]>([])
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireAnswers | null>(null)
 
-  // States taken out of Direct Return Filing; they stay in Tax registrations.
-  const [delinkedCodes, setDelinkedCodes] = useState<string[]>([])
-  const allRegisteredRows: NexusRow[] = registrations.map((r) => ({
+  const registeredRows: NexusRow[] = registrations.map((r) => ({
     id: r.code,
     state: r.name,
     stateCode: r.code,
     forms: taxForms[r.code] ?? [],
     registeredOn: r.registeredOn,
   }))
-  const registeredRows = allRegisteredRows.filter((r) => !delinkedCodes.includes(r.stateCode))
   const setups: FilingSetup[] = registeredRows.length
     ? [{ id: 'registrations', savedAt: formsSavedAt, rows: registeredRows, questionnaire: savedQuestionnaire }]
     : []
@@ -2669,9 +2122,8 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
   const setupDone = [
     hasRegistrations || registrationsMarkedDone,
     appPage !== 'overview',
-    bankAccount !== null,
     fpoaStatus === 'processing',
-    registeredRows.length > 0 && registeredRows.every((r) => r.forms.length > 0),
+    hasRegistrations && registrations.every((r) => (taxForms[r.code] ?? []).length > 0),
   ]
 
   const openFormsEditor = () => {
@@ -2687,20 +2139,9 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
 
   const handleSaveForms = () => {
     setTaxForms((prev) => ({ ...prev, ...Object.fromEntries(nexusRows.map((r) => [r.stateCode, r.forms])) }))
-    setDelinkedCodes(registrations.map((r) => r.code).filter((code) => !nexusRows.some((row) => row.stateCode === code)))
     setSavedQuestionnaire(questionnaire)
     setFormsSavedAt(new Date())
-    showToast('Tax forms saved')
     backToTaxForms()
-  }
-
-  const [showEditorRegistration, setShowEditorRegistration] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
-  const toastTimer = useRef<number | undefined>(undefined)
-  const showToast = (message: string) => {
-    setToast(message)
-    window.clearTimeout(toastTimer.current)
-    toastTimer.current = window.setTimeout(() => setToast(null), 2500)
   }
 
   const handleAvalaraConnect = () => {
@@ -2713,7 +2154,6 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
     setAppPage('overview')
     setFpoaStatus('idle')
     setFpoaSignedAt(null)
-    setBankAccount(null)
     setTaxForms({})
     setSavedQuestionnaire(null)
   }
@@ -2769,8 +2209,6 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
               appPage === 'editor' ? (
                 <NexusSetupEditor
                   editorMode="existing"
-                  allRows={allRegisteredRows}
-                  linkedAtOpen={registeredRows.map((r) => r.id)}
                   nexusRows={nexusRows}
                   questionnaire={questionnaire}
                   onQuestionnaireSubmit={(answers) => {
@@ -2785,13 +2223,10 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
                   onNexusRowsChange={setNexusRows}
                   onSaveFilingSetup={handleSaveForms}
                   onBack={backToTaxForms}
-                  onAddRegistration={() => setShowEditorRegistration(true)}
                 />
               ) : appPage === 'active' ? (
                 <DirectTaxActivePage
                   focus={activeSegment}
-                  bankAccount={bankAccount}
-                  onSaveBankAccount={setBankAccount}
                   fpoaStatus={fpoaStatus}
                   fpoaSignedAt={fpoaSignedAt}
                   setups={setups}
@@ -2822,24 +2257,6 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
         />
       )}
 
-      {/* New tax registration from the Add tax forms page: saved right away, listed for forms */}
-      {showEditorRegistration && (
-        <NewTaxRegistrationForm
-          asModal
-          registeredCodes={registrations.map((r) => r.code)}
-          onSave={(r) => {
-            setRegistrations((prev) => [...prev, r])
-            setNexusRows((rows) => [
-              ...rows,
-              { id: r.code, state: r.name, stateCode: r.code, forms: [], registeredOn: r.registeredOn },
-            ])
-            setShowEditorRegistration(false)
-            showToast(`${r.name} registered. Add its tax forms below.`)
-          }}
-          onCancel={() => setShowEditorRegistration(false)}
-        />
-      )}
-
       {showAvalaraModal && (
         <AvalaraModal
           onConnect={handleAvalaraConnect}
@@ -2847,17 +2264,6 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
         />
       )}
 
-      {toast && (
-        <div
-          role="status"
-          className="fixed bottom-6 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm text-white shadow-lg"
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4 fill-green-400" aria-hidden="true">
-            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-          </svg>
-          {toast}
-        </div>
-      )}
     </div>
   )
 }

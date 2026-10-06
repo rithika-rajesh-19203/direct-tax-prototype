@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { NAV_TREE, TAX_NAV_TABS } from './app/data/navigation'
+// Frozen snapshot of v3.0 (2026-10-06). Do not edit: new work goes in src/App-canonical.tsx.
+import { NAV_TREE, TAX_NAV_TABS } from '../app/data/navigation'
 
 /**
  * Canonical version of the Direct Return Filing Settings app.
