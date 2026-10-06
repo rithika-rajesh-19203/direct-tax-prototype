@@ -15,7 +15,23 @@ This file tracks what has changed in the prototype and what is planned next.
 **Status:** in progress, not yet released or published
 **In the app:** "v4.0 · In progress" in the version dropdown
 
-1. **Tax forms is the centre of action** on the Direct Return Filing page.
+1. **Tax forms is the centre of action** on the Direct Return Filing page:
+   - **Tax forms by nexus** moves to the top, right under the page title. It's highlighted with a blue border and soft glow and a larger heading, and its subtitle says how many states still need forms.
+   - **Status is a slim header** instead of a card: "Direct Return Filing · Active" with a short line of text and a quiet **Disable** button.
+   - **Setup and authorization is downplayed** below the table: a grey, one-line summary ("2 of 5 steps done · Bank not connected · FPOA not signed", plus a **Next:** link) that's collapsed by default. **Show details** opens Setup progress, bank account and FPOA as before.
+2. **Setup and configuration come before tax forms:**
+   - Setup and authorization now sits **above** Tax forms by nexus.
+   - Until the first four steps (registrations, Avalara, bank account, FPOA) are done, it's titled **Finish setting up** and highlighted. Tax forms is greyed out with an "After setup" tag, and its **Add tax forms** buttons are disabled.
+   - Once those steps are done, setup collapses to its grey one-line summary and Tax forms becomes the highlighted area.
+3. **Save works without tax forms:** on Add tax forms, **Save** is always enabled (and ⌘/Ctrl + S always saves), even when no forms are added or nothing has changed. It reads **Save changes** when there are unsaved changes.
+4. **Richer setup summary line:** the step count is a segmented bar (green for done, blue for next) with "1/5 done". Every unfinished setup step is a link that does it (**Add Tax Registration**, **Connect bank account**, **Sign FPOA**), with the next one in bold and marked "Next:"; finished steps show a green tick.
+5. **Less repetition in setup details:** opening the details shows just the step list. There's no second "Setup progress" header, bar or count, and the summary line drops its step links while it's open. The separate Bank account and FPOA rows are gone; their details sit in the step rows ("Chase ••4821 · Change", "Signed Oct 6, 2026 · View document"). Step 5 points to "Continue in Tax forms below" instead of repeating the table's buttons.
+6. **Same setup card on the first page:** Setup progress on the first page now uses the same summary card as the Direct Return Filing page: segmented "*n*/5 done" bar, **Next: Add Tax Registration** and **Connect Avalara** links, and **Show / Hide details** for the step list (open by default). Step 2's shortcut is renamed from **Set up** to **Connect Avalara**.
+7. **Tax forms in the setup summary line:** the Direct Return Filing page's summary now covers step 5 too: a greyed "🔒 Tax forms after setup" until setup is done, then a **Next: Add tax forms** link that opens the Add tax forms page, and "✓ Tax forms" once every state has forms. Finished steps use short labels ("✓ Registrations", "✓ Bank", "✓ FPOA") so the line stays on one row.
+8. **Setup summary card split into two rows** (both pages), replacing the single crowded line:
+   - **Row 1:** title, segmented progress with "*n* of 5 done", and **Show all steps / Hide steps** on the right.
+   - **Row 2** (when collapsed): one chip per step, in order. Done steps are green chips with a tick; the next step is the only solid blue button ("Next · Connect bank account ›"); other open steps are outlined chips; steps that can't start yet are grey with a lock.
+9. **Setup starts collapsed once Direct Return Filing is enabled:** on the Direct Return Filing page the setup card always opens collapsed (title, progress and the step chips); **Show all steps** expands it.
 
 ---
 

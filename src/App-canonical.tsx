@@ -201,8 +201,6 @@ const BTN_ICON =
   'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600'
 const LINK =
   'inline-flex flex-shrink-0 items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline'
-// Small uppercase label that heads a group of cards on a page.
-const SECTION_LABEL = 'mb-2.5 text-xs font-semibold uppercase tracking-wider text-gray-500'
 // Compact buttons for small cards such as the setup checklist tiles.
 const BTN_XS_BASE =
   'inline-flex h-7 flex-shrink-0 items-center gap-1 rounded-md px-2.5 text-xs font-medium transition-colors'
@@ -1175,9 +1173,8 @@ function NexusSetupEditor({
   })()
   const dirty = snapshot(savedRows) !== snapshot(nexusRows)
   const [confirmLeave, setConfirmLeave] = useState(false)
-  const save = () => {
-    if (dirty) onSaveFilingSetup()
-  }
+  // Saving is always allowed, even with no forms or no changes.
+  const save = () => onSaveFilingSetup()
   const leave = () => (dirty ? setConfirmLeave(true) : onBack())
   const discard = () => onNexusRowsChange(savedRows)
   // Ctrl/⌘ + S saves without leaving the keyboard.
@@ -1427,8 +1424,8 @@ function NexusSetupEditor({
             <button onClick={discard} disabled={!dirty} className={`${BTN_SECONDARY} disabled:opacity-50`}>
               Discard
             </button>
-            <button onClick={save} disabled={!dirty} className={BTN_PRIMARY}>
-              Save changes
+            <button onClick={save} className={BTN_PRIMARY}>
+              {dirty ? 'Save changes' : 'Save'}
             </button>
           </div>
         </div>
@@ -1561,6 +1558,172 @@ function DisableDirectTaxModal({ onConfirm, onCancel }: { onConfirm: () => void;
   )
 }
 
+// One-line setup summary (segmented progress, a link per open step) that expands to the step list.
+// Used on both the first page and the Direct Return Filing page.
+type StepAction = { label: string; onClick: () => void }
+function SetupSummaryCard({
+  title,
+  quiet,
+  open,
+  onToggle,
+  done,
+  summary,
+  actions,
+  markable,
+  hints,
+  doneDetails,
+  summaryActions = {},
+}: {
+  title: string
+  // Grey and low-key once setup no longer needs attention; otherwise highlighted.
+  quiet: boolean
+  open: boolean
+  onToggle: () => void
+  done: boolean[]
+  // Steps shown as links (or ticks) in the summary line; `waiting` shows while a step can't be started yet.
+  summary: { index: number; done: string; todo: string; waiting?: string }[]
+  actions: Partial<Record<number, StepAction>>
+  // Extra shortcuts for the summary line only (not repeated in the step list).
+  summaryActions?: Partial<Record<number, StepAction>>
+  markable?: Partial<Record<number, () => void>>
+  hints?: Partial<Record<number, string>>
+  doneDetails?: Partial<Record<number, React.ReactNode>>
+}) {
+  const doneCount = done.filter(Boolean).length
+  const nextIndex = done.findIndex((d) => !d)
+  return (
+    <section
+      aria-labelledby="setup-summary-heading"
+      className={
+        quiet
+          ? 'rounded-lg border border-gray-200 bg-gray-50/80'
+          : 'rounded-xl border border-blue-200 bg-white shadow-sm ring-4 ring-blue-50'
+      }
+    >
+      {/* Row 1: what this is and how far along it is */}
+      <div className="flex items-center gap-4 px-5 py-3">
+        <h2
+          id="setup-summary-heading"
+          className={`flex-shrink-0 ${quiet ? 'text-sm font-medium text-gray-700' : 'text-base font-semibold text-gray-900'}`}
+        >
+          {title}
+        </h2>
+        <span className="flex items-center gap-2 text-xs text-gray-500" aria-label={`${doneCount} of ${done.length} steps done`}>
+          <span className="flex gap-0.5" aria-hidden="true">
+            {done.map((d, i) => (
+              <span
+                key={i}
+                className={`h-1.5 w-4 rounded-full ${d ? 'bg-green-500' : i === nextIndex ? 'bg-blue-500' : 'bg-gray-200'}`}
+              />
+            ))}
+          </span>
+          <span className="whitespace-nowrap">
+            <span className="font-medium tabular-nums text-gray-700">
+              {doneCount} of {done.length}
+            </span>{' '}
+            done
+          </span>
+        </span>
+        <button
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls="setup-details"
+          className="ml-auto inline-flex flex-shrink-0 items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+        >
+          {open ? 'Hide steps' : 'Show all steps'}
+          <svg
+            viewBox="0 0 24 24"
+            className={`h-3.5 w-3.5 fill-current transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          >
+            <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Row 2 (collapsed): each step as a chip, in order; the next one is the only solid button */}
+      {!open && (
+        <ul
+          aria-label="Setup steps"
+          className={`flex flex-wrap items-center gap-2 border-t px-5 py-3 ${quiet ? 'border-gray-200' : 'border-blue-100'}`}
+        >
+          {summary.map(({ index, done: doneLabel, todo, waiting }) => {
+            const action = actions[index] ?? summaryActions[index]
+            const chip = 'inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs whitespace-nowrap'
+            if (done[index])
+              return (
+                <li key={index} className={`${chip} bg-green-50 text-green-700`}>
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                  </svg>
+                  {doneLabel}
+                </li>
+              )
+            if (!action)
+              return waiting ? (
+                <li key={index} className={`${chip} bg-gray-100 text-gray-400`}>
+                  <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current" aria-hidden="true">
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2Zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2Zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2Z" />
+                  </svg>
+                  {waiting}
+                </li>
+              ) : null
+            const isNext = index === nextIndex
+            return (
+              <li key={index}>
+                <button
+                  onClick={action.onClick}
+                  className={
+                    isNext
+                      ? `${chip} bg-blue-600 font-medium text-white hover:bg-blue-700`
+                      : `${chip} border border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50`
+                  }
+                >
+                  {isNext && <span className="text-blue-100">Next</span>}
+                  {todo}
+                  {isNext && (
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
+                      <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+                    </svg>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {open && (
+        <div id="setup-details" className={`border-t p-4 ${quiet ? 'border-gray-200' : 'border-blue-100'}`}>
+          <SetupChecklist
+            bare
+            done={done}
+            title="Setup steps"
+            intro=""
+            actions={actions}
+            markable={markable}
+            hints={hints}
+            doneDetails={doneDetails}
+          />
+        </div>
+      )}
+    </section>
+  )
+}
+
+// First page: what can be done before connecting.
+const OVERVIEW_SETUP_SUMMARY = [
+  { index: 0, done: 'Tax registrations added', todo: 'Add Tax Registration' },
+  { index: 1, done: 'Avalara connected', todo: 'Connect Avalara' },
+]
+
+// Setup steps shown in the one-line summary (Avalara is always connected on this page).
+const SETUP_SUMMARY = [
+  { index: 0, done: 'Registrations', todo: 'Add Tax Registration' },
+  { index: 2, done: 'Bank', todo: 'Connect bank account' },
+  { index: 3, done: 'FPOA', todo: 'Sign FPOA' },
+  { index: 4, done: 'Tax forms', todo: 'Add tax forms', waiting: 'Tax forms after setup' },
+]
+
 function DirectTaxActivePage({
   focus,
   bankAccount,
@@ -1620,6 +1783,21 @@ function DirectTaxActivePage({
   const toggleExpanded = (id: string) =>
     setExpanded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
+  // Setup and authorization comes first: until registrations, Avalara, bank and FPOA are
+  // done it is highlighted, and tax forms wait below.
+  const setupReady = setupDone.slice(0, 4).every(Boolean)
+  // Collapsed whenever the page opens; the chip row shows each step and the next action.
+  const [showSetup, setShowSetup] = useState(false)
+  useEffect(() => {
+    if (setupReady) setShowSetup(false)
+  }, [setupReady])
+  const needsForms = nexusEntries.filter(({ row }) => row.forms.length === 0).length
+  const setupActions: Partial<Record<number, { label: string; onClick: () => void }>> = {
+    0: { label: 'Add Tax Registration', onClick: onManageRegistrations },
+    2: { label: 'Connect bank account', onClick: () => setShowBankModal(true) },
+    3: { label: 'View and sign FPOA', onClick: () => openFpoa() },
+  }
+
   const scrollTo = (segment: DirectTaxSegment) =>
     document.getElementById(`segment-${segment}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Coming back from the forms editor lands on the tax forms segment.
@@ -1628,117 +1806,99 @@ function DirectTaxActivePage({
   }, [focus])
 
   return (
-    <div className="space-y-8 p-6">
-      {/* Section 1 — Status */}
-      <section aria-labelledby="direct-tax-status" className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-        <div className="flex items-start justify-between gap-4 px-6 py-5">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <h1 id="direct-tax-status" className="text-lg font-semibold text-gray-900">
-                Direct Return Filing
-              </h1>
-              <span className="rounded-md bg-green-700 px-2 py-0.5 text-xs font-medium text-white">Active</span>
-            </div>
-            <p className="mt-1 text-sm text-gray-600">
-              File direct tax returns automatically for each nexus region, powered by Avalara.
-            </p>
+    <div className="space-y-5 p-6">
+      {/* Status: a slim header, not a card */}
+      <header className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 id="direct-tax-status" className="text-base font-semibold text-gray-900">
+              Direct Return Filing
+            </h1>
+            <StatusPill tone="success">Active</StatusPill>
           </div>
-          <button onClick={() => setConfirmDisable(true)} className={BTN_SECONDARY}>
-            Disable
-          </button>
+          <p className="mt-0.5 text-xs text-gray-500">Avalara files your direct tax returns for each registered state.</p>
         </div>
-      </section>
+        <button onClick={() => setConfirmDisable(true)} className={`${BTN_GHOST} text-gray-600`}>
+          Disable
+        </button>
+      </header>
 
-      {/* Section 2 — Setup: progress (until every step is done), bank account and FPOA */}
+      {/* Setup and authorization: first, and the focus until it's done; then one summary line */}
+      <SetupSummaryCard
+        title={setupReady ? 'Setup and authorization' : 'Finish setting up'}
+        quiet={setupReady}
+        open={showSetup}
+        onToggle={() => setShowSetup((v) => !v)}
+        done={setupDone}
+        summary={SETUP_SUMMARY}
+        actions={setupActions}
+        markable={{ 0: onMarkRegistrationsDone }}
+        hints={{ 4: setupReady ? 'Continue in Tax forms below' : 'After setup' }}
+        summaryActions={
+          setupReady && nexusEntries.length > 0
+            ? { 4: { label: 'Add tax forms', onClick: () => onViewSetup('registrations') } }
+            : {}
+        }
+        doneDetails={{
+          2: bankAccount && (
+            <>
+              <span className="text-gray-600">
+                {bankAccount.bank} ••{bankAccount.last4}
+              </span>
+              <button onClick={() => setShowBankModal(true)} className={LINK_SM}>
+                Change
+              </button>
+            </>
+          ),
+          3: (
+            <>
+              <span className="text-gray-600">Signed{fpoaSignedAt ? ` ${formatDate(fpoaSignedAt)}` : ''}</span>
+              <button onClick={openFpoa} className={LINK_SM}>
+                View document
+              </button>
+            </>
+          ),
+        }}
+      />
+
+      {/* Centre of action: tax forms */}
       <div>
-        <h2 className={SECTION_LABEL}>Setup and authorization</h2>
-        <div className="space-y-3">
-      {setupDone.some((d) => !d) && (
-        <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
-          <SetupChecklist
-            done={setupDone}
-            title="Setup progress"
-            intro="Each step is marked completed as soon as you finish it."
-            defaultCollapsed
-            actions={{
-              0: { label: 'Add Tax Registration', onClick: onManageRegistrations },
-              2: { label: 'Connect bank account', onClick: () => setShowBankModal(true) },
-              3: { label: 'View and sign FPOA', onClick: openFpoa },
-              4: { label: 'Add tax forms', onClick: () => scrollTo('forms') },
-            }}
-            markable={{ 0: onMarkRegistrationsDone }}
-          />
-        </div>
-      )}
-
-      {/* Bank account and FPOA, one row each */}
-      <div aria-label="Payment and authorization" className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
-        <div id="segment-bank" className="flex items-center gap-4 px-5 py-3">
-          <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-gray-400" aria-hidden="true">
-            <path d="M4 10h3v7H4v-7Zm6.5 0h3v7h-3v-7ZM2 19h20v3H2v-3Zm15-9h3v7h-3v-7ZM12 1 2 6v2h20V6L12 1Z" />
-          </svg>
-          <h2 className="w-36 flex-shrink-0 text-sm font-medium text-gray-900">Bank account</h2>
-          <p className="min-w-0 flex-1 truncate text-sm text-gray-600">
-            {bankAccount
-              ? `${bankAccount.bank} · ${bankAccount.name} ••${bankAccount.last4}`
-              : 'Not connected'}
-          </p>
-          {bankAccount ? <StatusPill tone="success">Connected</StatusPill> : <StatusPill tone="warning">Pending</StatusPill>}
-          <button onClick={() => setShowBankModal(true)} className={`${LINK_SM} w-28 justify-end whitespace-nowrap`}>
-            {bankAccount ? 'Change' : 'Connect'}
-          </button>
-        </div>
-
-        <div id="segment-fpoa" className="flex scroll-mt-6 items-center gap-4 px-5 py-3">
-          <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-gray-400" aria-hidden="true">
-            <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm2 16H8v-2h8v2Zm0-4H8v-2h8v2Zm-3-5V3.5L18.5 9H13Z" />
-          </svg>
-          <h2 className="w-36 flex-shrink-0 text-sm font-medium text-gray-900">FPOA</h2>
-          <p className="min-w-0 flex-1 truncate text-sm text-gray-600">
-            {signed
-              ? `Signed${fpoaSignedAt ? ` on ${formatDate(fpoaSignedAt)}` : ''}`
-              : 'Authorizes Avalara to file and pay on your behalf'}
-          </p>
-          {signed ? (
-            <StatusPill tone="success">Signed</StatusPill>
-          ) : fpoaStatus === 'signing' ? (
-            <StatusPill tone="neutral">Signing</StatusPill>
-          ) : (
-            <StatusPill tone="warning">Pending</StatusPill>
-          )}
-          <button
-            onClick={openFpoa}
-            disabled={fpoaStatus === 'signing'}
-            className={`${LINK_SM} w-28 justify-end whitespace-nowrap disabled:opacity-50`}
-          >
-            {signed ? 'View document' : 'View and sign'}
-          </button>
-        </div>
-      </div>
-        </div>
-      </div>
-
-      {/* Section 3 — Tax forms */}
-      <div>
-      <h2 className={SECTION_LABEL}>Tax forms</h2>
-      {/* Segment: tax forms */}
       <section
         id="segment-forms"
         aria-labelledby="tax-return-heading"
-        className="scroll-mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white"
+        className={`scroll-mt-6 overflow-hidden bg-white ${
+          setupReady ? 'rounded-xl border border-blue-200 shadow-sm ring-4 ring-blue-50' : 'rounded-lg border border-gray-200'
+        }`}
       >
         <div className="flex items-start justify-between gap-4 px-5 py-4">
           <div>
             <div className="flex items-center gap-2">
-              <h2 id="tax-return-heading" className="text-sm font-semibold text-gray-900">
+              <h2
+                id="tax-return-heading"
+                className={setupReady ? 'text-base font-semibold text-gray-900' : 'text-sm font-semibold text-gray-500'}
+              >
                 Tax forms by nexus
               </h2>
+              {!setupReady && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                  <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current" aria-hidden="true">
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2Zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2Zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2Z" />
+                  </svg>
+                  After setup
+                </span>
+              )}
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums">
                 {nexusEntries.length}
               </span>
             </div>
             <p className="mt-0.5 text-xs text-gray-600">
-              Add nexus regions and manage the eligible forms for each nexus from one place.
+              {!setupReady
+                ? 'Available once setup and authorization above is complete.'
+                : nexusEntries.length === 0
+                ? 'Add a tax registration, then choose the returns Avalara files for it.'
+                : needsForms > 0
+                  ? `${needsForms} of ${nexusEntries.length} state${nexusEntries.length !== 1 ? 's' : ''} still need${needsForms === 1 ? 's' : ''} tax forms.`
+                  : 'Every state has its tax forms. Avalara files these returns for you.'}
             </p>
           </div>
           <button onClick={onManageRegistrations} className={BTN_SECONDARY}>
@@ -1841,7 +2001,9 @@ function DirectTaxActivePage({
                           e.stopPropagation()
                           onViewSetup(setup.id)
                         }}
-                        className={`${hasForms ? LINK_SM : BTN_XS_PRIMARY} whitespace-nowrap`}
+                        disabled={!setupReady}
+                        title={setupReady ? undefined : 'Finish setup and authorization first'}
+                        className={`${hasForms ? LINK_SM : BTN_XS_PRIMARY} whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40`}
                       >
                         {hasForms ? 'Edit tax forms' : 'Add tax forms'}
                       </button>
@@ -2270,7 +2432,13 @@ function SetupChecklist({
   markable = {},
   hints = {},
   defaultCollapsed = false,
+  bare = false,
+  doneDetails = {},
 }: {
+  // List only: no title, progress bar, intro or collapse (the parent shows those).
+  bare?: boolean
+  // Shown instead of "Completed" on a finished step, e.g. the connected bank and a Change link.
+  doneDetails?: Partial<Record<number, React.ReactNode>>
   // Start with the step list hidden (used once Direct Return Filing is active).
   defaultCollapsed?: boolean
   done: boolean[]
@@ -2289,6 +2457,7 @@ function SetupChecklist({
 
   return (
     <div>
+      {!bare && (<>
       <div className="flex items-center gap-4">
         <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
@@ -2347,10 +2516,11 @@ function SetupChecklist({
       ) : (
         <p className="mt-1 text-xs text-gray-600">{intro}</p>
       )}
+      </>)}
 
       {/* One row per step: number · name and description · status or actions, right-aligned */}
-      {!collapsed && (
-      <ol id="setup-steps" className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200">
+      {(bare || !collapsed) && (
+      <ol id="setup-steps" aria-label={bare ? title : undefined} className={`${bare ? '' : 'mt-3'} divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white`}>
         {SETUP_STEPS.map((step, i) => {
           const isDone = done[i]
           const action = actions[i]
@@ -2381,7 +2551,11 @@ function SetupChecklist({
               </div>
               <div className="flex flex-shrink-0 items-center gap-4">
                 {isDone ? (
-                  <span className="text-xs font-medium text-green-700">Completed</span>
+                  doneDetails[i] ? (
+                    <span className="flex items-center gap-3 text-xs">{doneDetails[i]}</span>
+                  ) : (
+                    <span className="text-xs font-medium text-green-700">Completed</span>
+                  )
                 ) : (
                   <>
                     {markDone && (
@@ -2494,6 +2668,7 @@ function DirectTaxSettings({
   onSelectSection: (id: string) => void
 }) {
   const [showDetails, setShowDetails] = useState(false)
+  const [showSteps, setShowSteps] = useState(true)
 
   return (
     <div className="flex h-full flex-1 min-w-0 gap-0">
@@ -2583,20 +2758,21 @@ function DirectTaxSettings({
               )}
             </div>
 
-            {/* Setup progress */}
-            <section className="rounded-lg border border-gray-200 bg-white px-5 py-4">
-              <SetupChecklist
-                done={setupDone}
-                title="Setup progress"
-                intro="Start with your tax registrations. Avalara files your direct tax returns automatically once all five steps are done."
-                actions={{
-                  0: { label: 'Add Tax Registration', onClick: () => onGoToRegistration(true) },
-                  1: { label: 'Set up', onClick: onOpenSetup },
-                }}
-                markable={{ 0: onMarkRegistrationsDone }}
-                hints={{ 2: 'After connecting', 3: 'After connecting', 4: 'After connecting' }}
-              />
-            </section>
+            {/* Setup: same summary card as the Direct Return Filing page, open by default */}
+            <SetupSummaryCard
+              title="Setup progress"
+              quiet={false}
+              open={showSteps}
+              onToggle={() => setShowSteps((v) => !v)}
+              done={setupDone}
+              summary={OVERVIEW_SETUP_SUMMARY}
+              actions={{
+                0: { label: 'Add Tax Registration', onClick: () => onGoToRegistration(true) },
+                1: { label: 'Connect Avalara', onClick: onOpenSetup },
+              }}
+              markable={{ 0: onMarkRegistrationsDone }}
+              hints={{ 2: 'After connecting', 3: 'After connecting', 4: 'After connecting' }}
+            />
           </div>
         )}
 
