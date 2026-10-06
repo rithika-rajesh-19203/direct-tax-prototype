@@ -1602,13 +1602,18 @@ function SetupSummaryCard({
     >
       {/* Row 1: what this is and how far along it is */}
       <div className="flex items-center gap-4 px-5 py-3">
-        <h2
-          id="setup-summary-heading"
-          className={`flex-shrink-0 ${quiet ? 'text-sm font-medium text-gray-700' : 'text-base font-semibold text-gray-900'}`}
-        >
-          {title}
-        </h2>
-        <span className="flex items-center gap-2 text-xs text-gray-500" aria-label={`${doneCount} of ${done.length} steps done`}>
+        <div className="flex-shrink-0">
+          <h2
+            id="setup-summary-heading"
+            className={quiet ? 'text-sm font-medium text-gray-700' : 'text-base font-semibold text-gray-900'}
+          >
+            {title}
+          </h2>
+          <p className="mt-0.5 text-xs text-gray-500">
+            Follow these steps to file your direct tax returns through Zoho Books and Avalara.
+          </p>
+        </div>
+        <span className="ml-auto flex items-center gap-2 text-xs text-gray-500" aria-label={`${doneCount} of ${done.length} steps done`}>
           <span className="flex gap-0.5" aria-hidden="true">
             {done.map((d, i) => (
               <span
@@ -1628,7 +1633,7 @@ function SetupSummaryCard({
           onClick={onToggle}
           aria-expanded={open}
           aria-controls="setup-details"
-          className="ml-auto inline-flex flex-shrink-0 items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
+          className="inline-flex flex-shrink-0 items-center gap-1 border-l border-gray-200 pl-4 text-xs font-medium text-gray-600 hover:text-gray-900"
         >
           {open ? 'Hide steps' : 'Show all steps'}
           <svg

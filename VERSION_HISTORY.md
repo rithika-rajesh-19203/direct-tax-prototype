@@ -33,6 +33,7 @@ This file tracks what has changed in the prototype and what is planned next.
    - **Row 1:** title, segmented progress with "*n* of 5 done", and **Show all steps / Hide steps** on the right.
    - **Row 2** (when collapsed): one chip per step, in order. Done steps are green chips with a tick; the next step is the only solid blue button ("Next · Connect bank account ›"); other open steps are outlined chips; steps that can't start yet are grey with a lock.
 9. **Setup starts collapsed once Direct Return Filing is enabled:** on the Direct Return Filing page the setup card always opens collapsed (title, progress and the step chips); **Show all steps** expands it.
+10. **Setup card subtitle:** under the setup card's title, "Follow these steps to file your direct tax returns through Zoho Books and Avalara." (both pages). The progress bar and **Show all steps** sit together on the right.
 
 ---
 
