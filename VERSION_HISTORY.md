@@ -12,7 +12,8 @@ This file tracks what has changed in the prototype and what is planned next.
 
 ## v4.0 — in progress
 
-**Status:** in progress, not yet released or published
+**Status:** in progress, not yet released
+**Public link:** https://rithika-rajesh-19203.github.io/direct-tax-prototype/ (published Oct 6, 2026; opens on v4.0, and `?v=v3.0` or `?v=v2.0` opens an earlier version)
 **In the app:** "v4.0 · In progress" in the version dropdown
 
 1. **Tax forms is the centre of action** on the Direct Return Filing page:
