@@ -39,6 +39,7 @@ This file tracks what has changed in the prototype and what is planned next.
 13. **No Add tax registration on the Add tax forms page:** the link (and the registration pop-up it opened) is removed from the editor. Registrations are added from the Direct Return Filing page or the Tax Registration tab.
 14. **Tax forms don't wait for the bank account:** Tax forms by nexus unlocks once registrations, Avalara and the FPOA are done. The bank account is still a setup step but no longer blocks adding forms. The locked state now reads "After FPOA" / "Available once the FPOA above is signed."
 15. **Tax forms table grouped by state:** Tax forms by nexus is now a grouped table (Tax form · Description · Actions). Each state is a group row with its code, name, form count, registration date and **Edit tax forms** / **Add tax forms**; its forms are listed as rows beneath it. A state without forms shows "Needs forms" and a one-line empty row.
+16. **No bank details panel in the FPOA pop-up:** the copy-ready bank account details are gone, even when a bank account is already connected. The side panel only says to enter the account Avalara should debit and to use the same account in the Bank account step.
 
 ---
 

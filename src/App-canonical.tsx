@@ -548,56 +548,8 @@ const FPOA_ESIGN_URL =
 const ESIGN_ORIGIN = /^https:\/\/[\w.-]+\.(echosign|adobesign)\.com$/
 
 // The FPOA opens in a large modal that hosts the Acrobat Sign document.
-// The FPOA's bank section, in the order the Acrobat Sign form asks for it.
-function FpoaBankDetails({ account }: { account: BankAccount | null }) {
-  const [copied, setCopied] = useState<string | null>(null)
-  const copy = (label: string, value: string) => {
-    navigator.clipboard?.writeText(value).then(
-      () => {
-        setCopied(label)
-        setTimeout(() => setCopied((c) => (c === label ? null : c)), 1500)
-      },
-      () => {},
-    )
-  }
-  if (!account) {
-    return (
-      <p className="mt-1 text-xs leading-5 text-gray-600">
-        Enter the account Avalara should debit for the tax due. You'll connect the same account in Zoho Books in the next step.
-      </p>
-    )
-  }
-  const rows: [string, string][] = [
-    ['Account name', account.name],
-    ['Bank name', account.bank],
-    ['Account number', account.accountNumber],
-    ['Routing number', account.routing],
-    ['Account type', account.type],
-  ]
-  return (
-    <dl className="space-y-2.5">
-      {rows.map(([label, value]) => (
-        <div key={label}>
-          <dt className="text-xs text-gray-500">{label}</dt>
-          <dd className="mt-0.5 flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-2.5 py-1.5">
-            <span className="truncate text-sm font-medium text-gray-900 tabular-nums">{value}</span>
-            <button
-              onClick={() => copy(label, value)}
-              aria-label={`Copy ${label.toLowerCase()}`}
-              className="flex-shrink-0 text-xs font-medium text-blue-600 hover:text-blue-700"
-            >
-              {copied === label ? 'Copied' : 'Copy'}
-            </button>
-          </dd>
-        </div>
-      ))}
-    </dl>
-  )
-}
-
 function FpoaSignModal({
   open,
-  bankAccount,
   signed,
   signing,
   liveSession,
@@ -605,7 +557,6 @@ function FpoaSignModal({
   onClose,
 }: {
   open: boolean
-  bankAccount: BankAccount | null
   signed: boolean
   signing: boolean
   // False when the FPOA was signed on an earlier visit: Adobe's session is gone.
@@ -669,12 +620,9 @@ function FpoaSignModal({
             {!signed && (
               <aside className="w-72 flex-shrink-0 overflow-y-auto border-l border-gray-200 bg-gray-50 p-4">
                 <h3 className="text-sm font-semibold text-gray-900">Taxpayer bank account</h3>
-                {bankAccount && (
-                  <p className="mt-1 mb-3 text-xs leading-5 text-gray-600">
-                    Enter these in the FPOA's "Taxpayer bank account" section. Acrobat Sign doesn't let this page fill them in for you.
-                  </p>
-                )}
-                <FpoaBankDetails account={bankAccount} />
+                <p className="mt-1 text-xs leading-5 text-gray-600">
+                  Enter the account Avalara should debit for the tax due. Use the same account in the Bank account step.
+                </p>
               </aside>
             )}
           </div>
@@ -2022,7 +1970,6 @@ function DirectTaxActivePage({
       {(fpoaFrameMounted || (fpoaModalOpen && signed)) && (
         <FpoaSignModal
           open={fpoaModalOpen}
-          bankAccount={bankAccount}
           signed={signed}
           signing={fpoaStatus === 'signing'}
           liveSession={fpoaFrameMounted}
