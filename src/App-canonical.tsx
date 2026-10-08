@@ -426,7 +426,7 @@ function BankAccountModal({
           <div>
             <h2 id="bank-title" className="text-base font-semibold text-gray-900">Connect a bank account</h2>
             <p className="mt-1 text-sm text-gray-600">
-              Avalara debits this account to pay the tax due on each return it files. Nothing is debited until a return is filed.
+              Choose the account you named on the FPOA. Avalara debits it to pay the tax due on each return; nothing is debited until a return is filed.
             </p>
           </div>
           <button onClick={onClose} aria-label="Close" className={`-mr-2 -mt-1 ${BTN_ICON}`}>
@@ -562,8 +562,8 @@ function FpoaBankDetails({ account }: { account: BankAccount | null }) {
   }
   if (!account) {
     return (
-      <p className="text-xs leading-5 text-gray-600">
-        Connect a bank account first. Its details will appear here, ready to copy into the form.
+      <p className="mt-1 text-xs leading-5 text-gray-600">
+        Enter the account Avalara should debit for the tax due. You'll connect the same account in Zoho Books in the next step.
       </p>
     )
   }
@@ -668,10 +668,12 @@ function FpoaSignModal({
             </div>
             {!signed && (
               <aside className="w-72 flex-shrink-0 overflow-y-auto border-l border-gray-200 bg-gray-50 p-4">
-                <h3 className="text-sm font-semibold text-gray-900">Your bank details</h3>
-                <p className="mt-1 mb-3 text-xs leading-5 text-gray-600">
-                  Enter these in the FPOA's "Taxpayer bank account" section. Acrobat Sign doesn't let this page fill them in for you.
-                </p>
+                <h3 className="text-sm font-semibold text-gray-900">Taxpayer bank account</h3>
+                {bankAccount && (
+                  <p className="mt-1 mb-3 text-xs leading-5 text-gray-600">
+                    Enter these in the FPOA's "Taxpayer bank account" section. Acrobat Sign doesn't let this page fill them in for you.
+                  </p>
+                )}
                 <FpoaBankDetails account={bankAccount} />
               </aside>
             )}
@@ -1112,12 +1114,10 @@ function AddFormModal({
 
 // ─── Nexus Setup Editor ───────────────────────────────
 function NexusSetupEditor({
-  onAddRegistration,
   allRows,
   linkedAtOpen,
   nexusRows,
   questionnaire,
-  onQuestionnaireSubmit,
   onNexusRowsChange,
   onSaveFilingSetup,
   onBack,
@@ -1130,23 +1130,15 @@ function NexusSetupEditor({
   linkedAtOpen: string[]
   nexusRows: NexusRow[]
   questionnaire: QuestionnaireAnswers | null
-  onQuestionnaireSubmit: (answers: QuestionnaireAnswers) => void
   onNexusRowsChange: (rows: NexusRow[]) => void
   onSaveFilingSetup: () => void
   onBack: () => void
   // Opens the new tax registration modal; the new state joins the list below.
-  onAddRegistration: () => void
 }) {
-  const [showQuestionnaire, setShowQuestionnaire] = useState(false)
   const [addingFormFor, setAddingFormFor] = useState<string | null>(null)
-  const [formAdded, setFormAdded] = useState(false)
-  // The questionnaire is a starting point: once it is saved, or the user
-  // starts adding forms by hand, it has done its job.
-  const showQuestionnaireCard = !questionnaire && !formAdded
 
   const addForms = (rowId: string, forms: string[]) => {
     onNexusRowsChange(nexusRows.map((r) => (r.id === rowId ? { ...r, forms: [...r.forms, ...forms] } : r)))
-    setFormAdded(true)
     setAddingFormFor(null)
   }
 
@@ -1239,32 +1231,6 @@ function NexusSetupEditor({
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 bg-gray-50">
             <div className="space-y-8">
-              {/* Optional helper, set apart from the forms below */}
-              {showQuestionnaireCard && (
-                <div className="flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-blue-100">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-blue-600" aria-hidden="true">
-                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm0 16H5V5h14v14ZM7 7h10v2H7V7Zm0 4h10v2H7v-2Zm0 4h6v2H7v-2Z" />
-                    </svg>
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-medium text-gray-900">
-                      Tax questionnaire
-                      <span className="ml-1.5 text-xs font-normal text-gray-500">Optional</span>
-                    </h4>
-                    <p className="mt-0.5 text-xs text-gray-600">
-                      Answer a few questions about your registered regions to get tax form suggestions for each nexus.
-                    </p>
-                    <button onClick={() => setShowQuestionnaire(true)} className={`${LINK_SM} mt-2`}>
-                      Answer questionnaire
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                        <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              )}
-
               <section aria-labelledby="nexus-forms-heading">
                 <div className="flex items-end justify-between gap-4 border-b border-gray-200 pb-3">
                   <div>
@@ -1289,13 +1255,6 @@ function NexusSetupEditor({
                     <span className="text-xs text-gray-500">
                       {nexusRows.length} state{nexusRows.length !== 1 ? 's' : ''}
                     </span>
-                    <span className="h-4 w-px bg-gray-200" aria-hidden="true" />
-                    <button onClick={onAddRegistration} className={LINK_SM}>
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                      </svg>
-                      Add tax registration
-                    </button>
                   </div>
                 </div>
 
@@ -1492,17 +1451,6 @@ function NexusSetupEditor({
         </div>
       )}
 
-      {showQuestionnaire && (
-        <QuestionnaireModal
-          regions={nexusRows.map((r) => ({ code: r.stateCode, name: r.state }))}
-          initialAnswers={questionnaire ?? EMPTY_ANSWERS}
-          onSubmit={(answers) => {
-            onQuestionnaireSubmit(answers)
-            setShowQuestionnaire(false)
-          }}
-          onClose={() => setShowQuestionnaire(false)}
-        />
-      )}
 
     </div>
   )
@@ -1724,9 +1672,9 @@ const OVERVIEW_SETUP_SUMMARY = [
 // Setup steps shown in the one-line summary (Avalara is always connected on this page).
 const SETUP_SUMMARY = [
   { index: 0, done: 'Registrations', todo: 'Add Tax Registration' },
-  { index: 2, done: 'Bank', todo: 'Connect bank account' },
-  { index: 3, done: 'FPOA', todo: 'Sign FPOA' },
-  { index: 4, done: 'Tax forms', todo: 'Add tax forms', waiting: 'Tax forms after setup' },
+  { index: 2, done: 'FPOA', todo: 'Sign FPOA' },
+  { index: 3, done: 'Bank', todo: 'Connect bank account' },
+  { index: 4, done: 'Tax forms', todo: 'Add tax forms', waiting: 'Tax forms after FPOA' },
 ]
 
 function DirectTaxActivePage({
@@ -1742,9 +1690,13 @@ function DirectTaxActivePage({
   onManageRegistrations,
   setupDone,
   onMarkRegistrationsDone,
+  questionnaire,
+  onQuestionnaireSubmit,
 }: {
   setupDone: boolean[]
   onMarkRegistrationsDone: () => void
+  questionnaire: QuestionnaireAnswers | null
+  onQuestionnaireSubmit: (answers: QuestionnaireAnswers) => void
   focus: DirectTaxSegment
   bankAccount: BankAccount | null
   onSaveBankAccount: (account: BankAccount) => void
@@ -1781,26 +1733,30 @@ function DirectTaxActivePage({
     return () => window.removeEventListener('message', onMessage)
   }, [fpoaStatus, fpoaFrameMounted])
   const [confirmDisable, setConfirmDisable] = useState(false)
-  const [expanded, setExpanded] = useState<string[]>([])
+
   const signed = fpoaStatus === 'processing'
   // One table row per nexus card, across every saved setup.
   const nexusEntries = setups.flatMap((setup) => setup.rows.map((row) => ({ setup, row })))
-  const toggleExpanded = (id: string) =>
-    setExpanded((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
-  // Setup and authorization comes first: until registrations, Avalara, bank and FPOA are
+  // Setup and authorization comes first: until registrations, Avalara, FPOA and bank are
   // done it is highlighted, and tax forms wait below.
   const setupReady = setupDone.slice(0, 4).every(Boolean)
+  // Tax forms only wait for registrations, Avalara and the FPOA; the bank account can come later.
+  const formsReady = setupDone.slice(0, 3).every(Boolean)
   // Collapsed whenever the page opens; the chip row shows each step and the next action.
   const [showSetup, setShowSetup] = useState(false)
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false)
+  // Offered once the FPOA is signed; gone once answered or once any state has forms.
+  const showQuestionnaireCard =
+    signed && nexusEntries.length > 0 && !questionnaire && nexusEntries.every(({ row }) => row.forms.length === 0)
   useEffect(() => {
     if (setupReady) setShowSetup(false)
   }, [setupReady])
   const needsForms = nexusEntries.filter(({ row }) => row.forms.length === 0).length
   const setupActions: Partial<Record<number, { label: string; onClick: () => void }>> = {
     0: { label: 'Add Tax Registration', onClick: onManageRegistrations },
-    2: { label: 'Connect bank account', onClick: () => setShowBankModal(true) },
-    3: { label: 'View and sign FPOA', onClick: () => openFpoa() },
+    2: { label: 'View and sign FPOA', onClick: () => openFpoa() },
+    3: { label: 'Connect bank account', onClick: () => setShowBankModal(true) },
   }
 
   const scrollTo = (segment: DirectTaxSegment) =>
@@ -1838,14 +1794,14 @@ function DirectTaxActivePage({
         summary={SETUP_SUMMARY}
         actions={setupActions}
         markable={{ 0: onMarkRegistrationsDone }}
-        hints={{ 4: setupReady ? 'Continue in Tax forms below' : 'After setup' }}
+        hints={{ 4: formsReady ? 'Continue in Tax forms below' : 'After signing the FPOA' }}
         summaryActions={
-          setupReady && nexusEntries.length > 0
+          formsReady && nexusEntries.length > 0
             ? { 4: { label: 'Add tax forms', onClick: () => onViewSetup('registrations') } }
             : {}
         }
         doneDetails={{
-          2: bankAccount && (
+          3: bankAccount && (
             <>
               <span className="text-gray-600">
                 {bankAccount.bank} ••{bankAccount.last4}
@@ -1855,7 +1811,7 @@ function DirectTaxActivePage({
               </button>
             </>
           ),
-          3: (
+          2: (
             <>
               <span className="text-gray-600">Signed{fpoaSignedAt ? ` ${formatDate(fpoaSignedAt)}` : ''}</span>
               <button onClick={openFpoa} className={LINK_SM}>
@@ -1866,13 +1822,44 @@ function DirectTaxActivePage({
         }}
       />
 
+      {/* Tax questionnaire: only once the FPOA is signed */}
+      {showQuestionnaireCard && (
+        <section
+          aria-labelledby="questionnaire-heading"
+          className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-5 py-4"
+        >
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-blue-600" aria-hidden="true">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm0 16H5V5h14v14ZM7 7h10v2H7V7Zm0 4h10v2H7v-2Zm0 4h6v2H7v-2Z" />
+            </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h2 id="questionnaire-heading" className="text-sm font-semibold text-gray-900">
+                Tax questionnaire
+              </h2>
+              <span className="text-xs text-gray-500">Optional</span>
+            </div>
+            <p className="mt-0.5 text-xs text-gray-600">
+              Answer a few questions about your registered states to get suggested tax forms for each nexus.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowQuestionnaire(true)}
+            className={`${BTN_XS_BASE} border border-gray-300 bg-white text-gray-700 hover:bg-gray-50`}
+          >
+            Answer questionnaire
+          </button>
+        </section>
+      )}
+
       {/* Centre of action: tax forms */}
       <div>
       <section
         id="segment-forms"
         aria-labelledby="tax-return-heading"
         className={`scroll-mt-6 overflow-hidden bg-white ${
-          setupReady ? 'rounded-xl border border-blue-200 shadow-sm ring-4 ring-blue-50' : 'rounded-lg border border-gray-200'
+          formsReady ? 'rounded-xl border border-blue-200 shadow-sm ring-4 ring-blue-50' : 'rounded-lg border border-gray-200'
         }`}
       >
         <div className="flex items-start justify-between gap-4 px-5 py-4">
@@ -1880,16 +1867,16 @@ function DirectTaxActivePage({
             <div className="flex items-center gap-2">
               <h2
                 id="tax-return-heading"
-                className={setupReady ? 'text-base font-semibold text-gray-900' : 'text-sm font-semibold text-gray-500'}
+                className={formsReady ? 'text-base font-semibold text-gray-900' : 'text-sm font-semibold text-gray-500'}
               >
                 Tax forms by nexus
               </h2>
-              {!setupReady && (
+              {!formsReady && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
                   <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current" aria-hidden="true">
                     <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2Zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2Zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2Z" />
                   </svg>
-                  After setup
+                  After FPOA
                 </span>
               )}
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums">
@@ -1897,8 +1884,8 @@ function DirectTaxActivePage({
               </span>
             </div>
             <p className="mt-0.5 text-xs text-gray-600">
-              {!setupReady
-                ? 'Available once setup and authorization above is complete.'
+              {!formsReady
+                ? 'Available once the FPOA above is signed.'
                 : nexusEntries.length === 0
                 ? 'Add a tax registration, then choose the returns Avalara files for it.'
                 : needsForms > 0
@@ -1927,122 +1914,99 @@ function DirectTaxActivePage({
             </p>
           </div>
         ) : (
-        <table className="w-full text-left">
+        <table className="w-full table-fixed text-left">
           <thead className="border-y border-gray-200 bg-gray-50">
             <tr>
-              {['Nexus', 'Tax forms', 'Status'].map((h) => (
-                <th key={h} scope="col" className="whitespace-nowrap px-5 py-2.5 text-xs font-medium text-gray-500">
-                  {h}
-                </th>
-              ))}
-              <th scope="col" className="whitespace-nowrap px-5 py-2.5 text-right text-xs font-medium text-gray-500">
+              <th scope="col" className="w-[38%] whitespace-nowrap py-2.5 pl-15 pr-5 text-xs font-medium text-gray-500">
+                Tax form
+              </th>
+              <th scope="col" className="whitespace-nowrap px-5 py-2.5 text-xs font-medium text-gray-500">
+                Description
+              </th>
+              <th scope="col" className="w-40 whitespace-nowrap px-5 py-2.5 text-right text-xs font-medium text-gray-500">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
-            {nexusEntries.map(({ setup, row }) => {
-              const key = `${setup.id}:${row.id}`
-              const isOpen = expanded.includes(key)
-              const hasForms = row.forms.length > 0
-              const panelId = `nexus-forms-${key}`
-              const catalog = formsForRegion(row.stateCode)
-              return (
-                <React.Fragment key={key}>
-                  <tr
-                    onClick={() => hasForms && toggleExpanded(key)}
-                    className={`transition-colors ${hasForms ? 'cursor-pointer hover:bg-gray-50' : ''} ${isOpen ? 'bg-gray-50' : ''}`}
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        {hasForms ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleExpanded(key)
-                            }}
-                            aria-expanded={isOpen}
-                            aria-controls={panelId}
-                            aria-label={`${isOpen ? 'Hide' : 'Show'} forms for ${row.state}`}
-                            className="-ml-1.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-600"
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              className={`h-4 w-4 fill-current transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
-                              aria-hidden="true"
-                            >
-                              <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                            </svg>
-                          </button>
-                        ) : (
-                          <span className="-ml-1.5 h-6 w-6 flex-shrink-0" aria-hidden="true" />
-                        )}
-                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 text-xs font-bold text-blue-600">
-                          {row.stateCode}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{row.state}</p>
-                          <p className="whitespace-nowrap text-xs text-gray-500">
-                            {row.registeredOn ? `Registered ${formatIsoDate(row.registeredOn)}` : `Saved ${formatDate(setup.savedAt)}`}
-                          </p>
-                        </div>
+          {/* One tbody per state: the state is the group row, its forms are the rows below */}
+          {nexusEntries.map(({ setup, row }) => {
+            const key = `${setup.id}:${row.id}`
+            const hasForms = row.forms.length > 0
+            const catalog = formsForRegion(row.stateCode)
+            return (
+              <tbody key={key} className="border-b border-gray-200 last:border-b-0">
+                <tr className="bg-gray-50/70">
+                  <th scope="rowgroup" colSpan={2} className="px-5 py-2.5 text-left font-normal">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-blue-50 text-[11px] font-bold text-blue-600">
+                        {row.stateCode}
                       </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <p className="whitespace-nowrap text-sm text-gray-800 tabular-nums">
+                      <span className="text-sm font-semibold text-gray-900">{row.state}</span>
+                      <span className="rounded-full bg-gray-200/70 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums">
                         {row.forms.length} form{row.forms.length !== 1 ? 's' : ''}
-                      </p>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {hasForms ? (
-                        <StatusPill tone="success">Configured</StatusPill>
-                      ) : (
-                        <StatusPill tone="warning">Needs forms</StatusPill>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onViewSetup(setup.id)
-                        }}
-                        disabled={!setupReady}
-                        title={setupReady ? undefined : 'Finish setup and authorization first'}
-                        className={`${hasForms ? LINK_SM : BTN_XS_PRIMARY} whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40`}
-                      >
-                        {hasForms ? 'Edit tax forms' : 'Add tax forms'}
-                      </button>
-                    </td>
-                  </tr>
-
-                  {/* Accordion: this state's forms, one per row */}
-                  {hasForms && isOpen && (
-                    <tr id={panelId} className="bg-gray-50">
-                      <td colSpan={4} className="px-5 pb-4 pt-0">
-                        <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
-                          {row.forms.map((form) => (
-                            <li key={form} className="flex items-center gap-3 px-4 py-2.5">
-                              <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-gray-400" aria-hidden="true">
-                                <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm2 16H8v-2h8v2Zm0-4H8v-2h8v2Zm-3-5V3.5L18.5 9H13Z" />
-                              </svg>
-                              <span className="w-44 flex-shrink-0 text-sm text-gray-800">{form}</span>
-                              <span className="text-xs text-gray-500">
-                                {catalog.find((f) => f.name === form)?.description}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
+                      </span>
+                      {!hasForms && <StatusPill tone="warning">Needs forms</StatusPill>}
+                      <span className="whitespace-nowrap text-xs text-gray-500">
+                        {row.registeredOn ? `Registered ${formatIsoDate(row.registeredOn)}` : `Saved ${formatDate(setup.savedAt)}`}
+                      </span>
+                    </div>
+                  </th>
+                  <td className="px-5 py-2.5 text-right">
+                    <button
+                      onClick={() => onViewSetup(setup.id)}
+                      disabled={!formsReady}
+                      title={formsReady ? undefined : 'Sign the FPOA first'}
+                      className={`${hasForms ? LINK_SM : BTN_XS_PRIMARY} whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40`}
+                    >
+                      {hasForms ? 'Edit tax forms' : 'Add tax forms'}
+                    </button>
+                  </td>
+                </tr>
+                {hasForms ? (
+                    row.forms.map((form) => (
+                      <tr key={form} className="border-t border-gray-100 hover:bg-gray-50/60">
+                        <td className="py-2.5 pl-15 pr-5">
+                          <div className="flex items-center gap-2.5">
+                            <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-gray-400" aria-hidden="true">
+                              <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm2 16H8v-2h8v2Zm0-4H8v-2h8v2Zm-3-5V3.5L18.5 9H13Z" />
+                            </svg>
+                            <span className="whitespace-nowrap text-sm text-gray-800">{form}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-2.5 text-sm text-gray-600">
+                          {catalog.find((f) => f.name === form)?.description ?? '—'}
+                        </td>
+                        <td className="px-5 py-2.5" />
+                      </tr>
+                    ))
+                  ) : (
+                    <tr className="border-t border-gray-100">
+                      <td colSpan={3} className="py-2.5 pl-15 pr-5 text-xs text-gray-500">
+                        No tax forms yet. Avalara won't file returns for {row.state} until you add them.
                       </td>
                     </tr>
                   )}
-                </React.Fragment>
-              )
-            })}
-          </tbody>
+              </tbody>
+            )
+          })}
         </table>
         )}
       </section>
       </div>
+
+      {showQuestionnaire && (
+        <QuestionnaireModal
+          regions={nexusEntries.map(({ row }) => ({ code: row.stateCode, name: row.state }))}
+          initialAnswers={questionnaire ?? EMPTY_ANSWERS}
+          onSubmit={(answers) => {
+            onQuestionnaireSubmit(answers)
+            setShowQuestionnaire(false)
+          }}
+          onClose={() => setShowQuestionnaire(false)}
+
+        />
+
+      )}
 
       {showBankModal && (
         <BankAccountModal
@@ -2406,24 +2370,24 @@ const SETUP_STEPS: { title: string; short: string; description: string; icon: st
     icon: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1ZM8 13h8v-2H8v2Zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5Z',
   },
   {
-    title: 'Connect a bank account',
-    short: 'Bank account',
-    description:
-      'Choose the bank account Avalara debits to pay the tax due on each return. Nothing is debited until a return is filed.',
-    icon: 'M4 10h3v7H4v-7Zm6.5 0h3v7h-3v-7ZM2 19h20v3H2v-3Zm15-9h3v7h-3v-7ZM12 1 2 6v2h20V6L12 1Z',
-  },
-  {
     title: 'Sign the FPOA',
     short: 'Sign FPOA',
     description:
-      'Review and sign the Funding Power of Attorney in Adobe Acrobat Sign. It authorizes Avalara to file returns and pay taxes from your bank account.',
+      'Review and sign the Funding Power of Attorney in Adobe Acrobat Sign. It authorizes Avalara to file returns and pay the tax due on your behalf.',
     icon: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
+  },
+  {
+    title: 'Connect a bank account',
+    short: 'Bank account',
+    description:
+      'Connect the bank account you named on the FPOA. Avalara debits it to pay the tax due on each return. Nothing is debited until a return is filed.',
+    icon: 'M4 10h3v7H4v-7Zm6.5 0h3v7h-3v-7ZM2 19h20v3H2v-3Zm15-9h3v7h-3v-7ZM12 1 2 6v2h20V6L12 1Z',
   },
   {
     title: 'Choose forms for each state',
     short: 'Tax forms',
     description:
-      'Pick the returns to file for each registered state. Answer a short, optional questionnaire to get suggested forms.',
+      'Pick the returns to file for each registered state. Available once the FPOA is signed, even before the bank account is connected; an optional tax questionnaire can suggest them for you.',
     icon: 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm2 16H8v-2h8v2Zm0-4H8v-2h8v2Zm-3-5V3.5L18.5 9H13Z',
   },
 ]
@@ -2850,8 +2814,8 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
   const setupDone = [
     hasRegistrations || registrationsMarkedDone,
     appPage !== 'overview',
-    bankAccount !== null,
     fpoaStatus === 'processing',
+    bankAccount !== null,
     registeredRows.length > 0 && registeredRows.every((r) => r.forms.length > 0),
   ]
 
@@ -2875,7 +2839,18 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
     backToTaxForms()
   }
 
-  const [showEditorRegistration, setShowEditorRegistration] = useState(false)
+  // Answers fill in suggested forms for each nexus state; the user reviews them in Tax forms.
+  const handleQuestionnaireSubmit = (answers: QuestionnaireAnswers) => {
+    const suggested = registeredRows.filter((r) => answers.nexus.includes(r.stateCode))
+    setSavedQuestionnaire(answers)
+    setTaxForms((prev) => ({
+      ...prev,
+      ...Object.fromEntries(suggested.map((r) => [r.stateCode, suggestFormsFor(answers, r.stateCode)])),
+    }))
+    setFormsSavedAt(new Date())
+    showToast(`Suggested forms added for ${suggested.length} state${suggested.length !== 1 ? 's' : ''}`)
+  }
+
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | undefined>(undefined)
   const showToast = (message: string) => {
@@ -2954,19 +2929,9 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
                   linkedAtOpen={registeredRows.map((r) => r.id)}
                   nexusRows={nexusRows}
                   questionnaire={questionnaire}
-                  onQuestionnaireSubmit={(answers) => {
-                    setQuestionnaire(answers)
-                    // Every registered state stays listed; nexus states get the suggested forms.
-                    setNexusRows((rows) =>
-                      rows.map((r) =>
-                        answers.nexus.includes(r.stateCode) ? { ...r, forms: suggestFormsFor(answers, r.stateCode) } : r,
-                      ),
-                    )
-                  }}
                   onNexusRowsChange={setNexusRows}
                   onSaveFilingSetup={handleSaveForms}
                   onBack={backToTaxForms}
-                  onAddRegistration={() => setShowEditorRegistration(true)}
                 />
               ) : appPage === 'active' ? (
                 <DirectTaxActivePage
@@ -2982,6 +2947,8 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
                   onManageRegistrations={() => openTaxRegistration()}
                   setupDone={setupDone}
                   onMarkRegistrationsDone={() => setRegistrationsMarkedDone(true)}
+                  questionnaire={savedQuestionnaire}
+                  onQuestionnaireSubmit={handleQuestionnaireSubmit}
                 />
               ) : undefined
             }
@@ -3000,24 +2967,6 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
             if (!stayAfterRegistration) setSelectedSection('tax-registration')
           }}
           onCancel={() => setShowFirstRegistration(false)}
-        />
-      )}
-
-      {/* New tax registration from the Add tax forms page: saved right away, listed for forms */}
-      {showEditorRegistration && (
-        <NewTaxRegistrationForm
-          asModal
-          registeredCodes={registrations.map((r) => r.code)}
-          onSave={(r) => {
-            setRegistrations((prev) => [...prev, r])
-            setNexusRows((rows) => [
-              ...rows,
-              { id: r.code, state: r.name, stateCode: r.code, forms: [], registeredOn: r.registeredOn },
-            ])
-            setShowEditorRegistration(false)
-            showToast(`${r.name} registered. Add its tax forms below.`)
-          }}
-          onCancel={() => setShowEditorRegistration(false)}
         />
       )}
 

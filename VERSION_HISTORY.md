@@ -13,7 +13,7 @@ This file tracks what has changed in the prototype and what is planned next.
 ## v4.0 — in progress
 
 **Status:** in progress, not yet released
-**Public link:** https://rithika-rajesh-19203.github.io/direct-tax-prototype/ (published Oct 6, 2026; opens on v4.0, and `?v=v3.0` or `?v=v2.0` opens an earlier version)
+**Public link:** https://rithika-rajesh-19203.github.io/direct-tax-prototype/ (last published Oct 8, 2026; opens on v4.0, and `?v=v3.0` or `?v=v2.0` opens an earlier version)
 **In the app:** "v4.0 · In progress" in the version dropdown
 
 1. **Tax forms is the centre of action** on the Direct Return Filing page:
@@ -31,9 +31,14 @@ This file tracks what has changed in the prototype and what is planned next.
 7. **Tax forms in the setup summary line:** the Direct Return Filing page's summary now covers step 5 too: a greyed "🔒 Tax forms after setup" until setup is done, then a **Next: Add tax forms** link that opens the Add tax forms page, and "✓ Tax forms" once every state has forms. Finished steps use short labels ("✓ Registrations", "✓ Bank", "✓ FPOA") so the line stays on one row.
 8. **Setup summary card split into two rows** (both pages), replacing the single crowded line:
    - **Row 1:** title, segmented progress with "*n* of 5 done", and **Show all steps / Hide steps** on the right.
-   - **Row 2** (when collapsed): one chip per step, in order. Done steps are green chips with a tick; the next step is the only solid blue button ("Next · Connect bank account ›"); other open steps are outlined chips; steps that can't start yet are grey with a lock.
+   - **Row 2** (when collapsed): one chip per step, in order. Done steps are green chips with a tick; the next step is the only solid blue button ("Next · Sign FPOA ›"); other open steps are outlined chips; steps that can't start yet are grey with a lock.
 9. **Setup starts collapsed once Direct Return Filing is enabled:** on the Direct Return Filing page the setup card always opens collapsed (title, progress and the step chips); **Show all steps** expands it.
 10. **Setup card subtitle:** under the setup card's title, "Follow these steps to file your direct tax returns through Zoho Books and Avalara." (both pages). The progress bar and **Show all steps** sit together on the right.
+11. **FPOA before bank account:** the setup order is now Tax registrations → Connect Avalara → Sign FPOA → Bank account → Tax forms. While no bank account is connected, the FPOA panel says to enter the account Avalara should debit; the bank step then asks for the same account named on the FPOA.
+12. **Tax questionnaire on its own card, after the FPOA:** the questionnaire has moved out of the Add tax forms page to a card on the Direct Return Filing page, between Setup and Tax forms. It appears only once the FPOA is signed, and disappears once it is answered or once any state has a tax form. Answering it adds suggested forms for each nexus state straight away (toast: "Suggested forms added for *n* states").
+13. **No Add tax registration on the Add tax forms page:** the link (and the registration pop-up it opened) is removed from the editor. Registrations are added from the Direct Return Filing page or the Tax Registration tab.
+14. **Tax forms don't wait for the bank account:** Tax forms by nexus unlocks once registrations, Avalara and the FPOA are done. The bank account is still a setup step but no longer blocks adding forms. The locked state now reads "After FPOA" / "Available once the FPOA above is signed."
+15. **Tax forms table grouped by state:** Tax forms by nexus is now a grouped table (Tax form · Description · Actions). Each state is a group row with its code, name, form count, registration date and **Edit tax forms** / **Add tax forms**; its forms are listed as rows beneath it. A state without forms shows "Needs forms" and a one-line empty row.
 
 ---
 
