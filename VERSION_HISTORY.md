@@ -13,7 +13,7 @@ This file tracks what has changed in the prototype and what is planned next.
 ## v4.0 — in progress
 
 **Status:** in progress, not yet released
-**Public link:** https://rithika-rajesh-19203.github.io/direct-tax-prototype/ (last published Oct 8, 2026; opens on v4.0, and `?v=v3.0` or `?v=v2.0` opens an earlier version)
+**Public link:** https://rithika-rajesh-19203.github.io/direct-tax-prototype/ (last published Oct 9, 2026; opens on v4.0, and `?v=v3.0` or `?v=v2.0` opens an earlier version)
 **In the app:** "v4.0 · In progress" in the version dropdown
 
 1. **Tax forms is the centre of action** on the Direct Return Filing page:
@@ -40,6 +40,7 @@ This file tracks what has changed in the prototype and what is planned next.
 14. **Tax forms don't wait for the bank account:** Tax forms by nexus unlocks once registrations, Avalara and the FPOA are done. The bank account is still a setup step but no longer blocks adding forms. The locked state now reads "After FPOA" / "Available once the FPOA above is signed."
 15. **Tax forms table grouped by state:** Tax forms by nexus is now a grouped table (Tax form · Description · Actions). Each state is a group row with its code, name, form count, registration date and **Edit tax forms** / **Add tax forms**; its forms are listed as rows beneath it. A state without forms shows "Needs forms" and a one-line empty row.
 16. **No bank details panel in the FPOA pop-up:** the copy-ready bank account details are gone, even when a bank account is already connected. The side panel only says to enter the account Avalara should debit and to use the same account in the Bank account step.
+17. **No new-account form in the bank pop-up:** the inline form (bank name, nickname, routing and account number, account type) is removed. **Add a new bank account** stays as a link, but does nothing in the prototype.
 
 ---
 

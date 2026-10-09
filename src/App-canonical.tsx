@@ -393,26 +393,10 @@ function BankAccountModal({
   onClose: () => void
 }) {
   const [choice, setChoice] = useState<string>(current?.id ?? EXISTING_BANK_ACCOUNTS[0].id)
-  const [form, setForm] = useState({ bank: '', name: '', routing: '', account: '', type: 'Checking' as BankAccount['type'] })
-  const isNew = choice === 'new'
-  const newValid = form.bank.trim() && form.name.trim() && /^\d{9}$/.test(form.routing) && /^\d{4,17}$/.test(form.account)
   const save = () => {
-    if (!isNew) {
-      const existing = EXISTING_BANK_ACCOUNTS.find((a) => a.id === choice)
-      if (existing) onSave(existing)
-      return
-    }
-    onSave({
-      id: `new-${form.account.slice(-4)}`,
-      bank: form.bank.trim(),
-      name: form.name.trim(),
-      last4: form.account.slice(-4),
-      type: form.type,
-      routing: form.routing,
-      accountNumber: form.account,
-    })
+    const existing = EXISTING_BANK_ACCOUNTS.find((a) => a.id === choice)
+    if (existing) onSave(existing)
   }
-  const field = 'mt-1 block h-9 w-full rounded-md border border-gray-300 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -437,93 +421,34 @@ function BankAccountModal({
         </div>
 
         <div className="flex-1 space-y-2 overflow-y-auto px-6 pb-5">
-          <p className="text-xs font-medium text-gray-500">{isNew ? 'New bank account' : 'Bank accounts in Zoho Books'}</p>
-          {!isNew &&
-            EXISTING_BANK_ACCOUNTS.map((a) => (
-              <label key={a.id} className={TILE}>
-                <input
-                  type="radio"
-                  name="bank-account"
-                  checked={choice === a.id}
-                  onChange={() => setChoice(a.id)}
-                  className="h-4 w-4 accent-blue-600"
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-gray-900">{a.bank} · {a.name}</span>
-                  <span className="block text-xs text-gray-500">{a.type} ending in {a.last4}</span>
-                </span>
-              </label>
-            ))}
+          <p className="text-xs font-medium text-gray-500">Bank accounts in Zoho Books</p>
+          {EXISTING_BANK_ACCOUNTS.map((a) => (
+            <label key={a.id} className={TILE}>
+              <input
+                type="radio"
+                name="bank-account"
+                checked={choice === a.id}
+                onChange={() => setChoice(a.id)}
+                className="h-4 w-4 accent-blue-600"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-gray-900">{a.bank} · {a.name}</span>
+                <span className="block text-xs text-gray-500">{a.type} ending in {a.last4}</span>
+              </span>
+            </label>
+          ))}
 
-          {!isNew && (
-            <button onClick={() => setChoice('new')} className={`${LINK} pt-1`}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-              </svg>
-              Add a new bank account
-            </button>
-          )}
-
-          {isNew && (
-            <button
-              onClick={() => setChoice(current?.id ?? EXISTING_BANK_ACCOUNTS[0].id)}
-              className={`${LINK_SM} mb-1`}
-            >
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z" />
-              </svg>
-              Choose an existing account instead
-            </button>
-          )}
-
-          {isNew && (
-            <div className="grid grid-cols-2 gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <label className="col-span-2 text-xs font-medium text-gray-700">
-                Bank name
-                <input className={field} value={form.bank} onChange={(e) => setForm({ ...form, bank: e.target.value })} />
-              </label>
-              <label className="col-span-2 text-xs font-medium text-gray-700">
-                Account nickname
-                <input className={field} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Tax payments" />
-              </label>
-              <label className="text-xs font-medium text-gray-700">
-                Routing number
-                <input
-                  className={field}
-                  inputMode="numeric"
-                  maxLength={9}
-                  value={form.routing}
-                  onChange={(e) => setForm({ ...form, routing: e.target.value.replace(/\D/g, '') })}
-                  placeholder="9 digits"
-                />
-              </label>
-              <label className="text-xs font-medium text-gray-700">
-                Account number
-                <input
-                  className={field}
-                  inputMode="numeric"
-                  maxLength={17}
-                  value={form.account}
-                  onChange={(e) => setForm({ ...form, account: e.target.value.replace(/\D/g, '') })}
-                />
-              </label>
-              <fieldset className="col-span-2">
-                <legend className="text-xs font-medium text-gray-700">Account type</legend>
-                <div className="mt-1.5 flex gap-4">
-                  {(['Checking', 'Savings'] as const).map((t) => (
-                    <label key={t} className="flex items-center gap-2 text-sm text-gray-700">
-                      <input type="radio" name="bank-type" checked={form.type === t} onChange={() => setForm({ ...form, type: t })} className="h-4 w-4 accent-blue-600" />
-                      {t}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            </div>
-          )}
+          {/* Prototype: shown for completeness, not wired up */}
+          <button type="button" className={`${LINK} pt-1`}>
+            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
+            Add a new bank account
+          </button>
         </div>
 
         <div className="flex items-center gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">
-          <button onClick={save} disabled={isNew && !newValid} className={BTN_PRIMARY}>
+          <button onClick={save} className={BTN_PRIMARY}>
             {current ? 'Save bank account' : 'Connect bank account'}
           </button>
           <button onClick={onClose} className={BTN_SECONDARY}>
