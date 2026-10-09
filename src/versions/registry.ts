@@ -14,11 +14,18 @@ export type PrototypeVersion = {
 // src/versions/, fix its relative imports, and add an entry here.
 export const VERSIONS: PrototypeVersion[] = [
   {
+    id: 'v5.0',
+    label: 'v5.0',
+    date: 'In progress',
+    summary: 'No Disable button once Direct Return Filing is on',
+    App: lazy(() => import('../App-canonical')),
+  },
+  {
     id: 'v4.0',
     label: 'v4.0',
-    date: 'In progress',
-    summary: 'Tax forms as the main action area; status and setup downplayed',
-    App: lazy(() => import('../App-canonical')),
+    date: 'Oct 9, 2026',
+    summary: 'FPOA before bank, questionnaire card, tax forms grouped by state',
+    App: lazy(() => import('./v4-0')),
   },
   {
     id: 'v3.0',

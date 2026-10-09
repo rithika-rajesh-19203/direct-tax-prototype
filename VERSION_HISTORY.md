@@ -3,18 +3,29 @@
 This file tracks what has changed in the prototype and what is planned next.
 
 **How it's maintained**
-- Every change is added under the version in progress (currently **v4.0**) as it's made.
+- Every change is added under the version in progress (currently **v5.0**) as it's made.
 - When the version in progress is ready, it's released with a date, a git tag and a commit, and the next version starts.
 - Each released version is also frozen as a copy in `src/versions/` and listed in `src/versions/registry.ts`, so it can be opened from the version dropdown in the app.
 - Ideas and requests that haven't been built yet go under **Planned**. Items move from Planned to the version in progress when work starts.
 
 ---
 
-## v4.0 — in progress
+## v5.0 — in progress
 
 **Status:** in progress, not yet released
-**Public link:** https://rithika-rajesh-19203.github.io/direct-tax-prototype/ (last published Oct 9, 2026; opens on v4.0, and `?v=v3.0` or `?v=v2.0` opens an earlier version)
-**In the app:** "v4.0 · In progress" in the version dropdown
+**Public link:** https://rithika-rajesh-19203.github.io/direct-tax-prototype/ (opens on the latest version; `?v=v4.0` opens v4.0)
+**In the app:** "v5.0 · In progress" in the version dropdown
+
+1. **No Disable button:** once Direct Return Filing is enabled, its page header shows only the title, the Active status and the subtitle. There's no way to turn it off from this page.
+
+---
+
+## v4.0 — FPOA first, questionnaire card and tax forms by state
+
+**Date:** 2026-10-09
+**Tag:** `v4.0`
+**File:** `src/versions/v4-0.tsx`
+**Public link:** https://rithika-rajesh-19203.github.io/direct-tax-prototype/?v=v4.0
 
 1. **Tax forms is the centre of action** on the Direct Return Filing page:
    - **Tax forms by nexus** moves to the top, right under the page title. It's highlighted with a blue border and soft glow and a larger heading, and its subtitle says how many states still need forms.
