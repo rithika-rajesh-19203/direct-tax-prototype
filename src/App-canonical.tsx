@@ -987,8 +987,7 @@ function AddFormModal({
 
 // ─── Nexus Setup Editor ───────────────────────────────
 function NexusSetupEditor({
-  allRows,
-  linkedAtOpen,
+  savedRows,
   nexusRows,
   questionnaire,
   onNexusRowsChange,
@@ -997,10 +996,8 @@ function NexusSetupEditor({
   editorMode,
 }: {
   editorMode: 'new' | 'existing'
-  // Every registered state, linked or not; states missing from nexusRows are delinked.
-  allRows: NexusRow[]
-  // Ids of the states that were linked when the editor opened (the saved state).
-  linkedAtOpen: string[]
+  // The rows as last saved, to spot unsaved changes.
+  savedRows: NexusRow[]
   nexusRows: NexusRow[]
   questionnaire: QuestionnaireAnswers | null
   onNexusRowsChange: (rows: NexusRow[]) => void
@@ -1020,7 +1017,6 @@ function NexusSetupEditor({
 
   // Unsaved changes: compare the working rows with what was last saved.
   const snapshot = (rows: NexusRow[]) => JSON.stringify(rows.map((r) => [r.id, [...r.forms].sort()]))
-  const savedRows = allRows.filter((r) => linkedAtOpen.includes(r.id))
   const changeCount = (() => {
     let n = 0
     const ids = new Set([...savedRows.map((r) => r.id), ...nexusRows.map((r) => r.id)])
@@ -1055,16 +1051,6 @@ function NexusSetupEditor({
   })
 
   const [menuFor, setMenuFor] = useState<string | null>(null)
-  const [confirmDelink, setConfirmDelink] = useState<NexusRow | null>(null)
-  const delinkedRows = allRows.filter((r) => !nexusRows.some((n) => n.id === r.id))
-  const delink = (row: NexusRow) => {
-    onNexusRowsChange(nexusRows.filter((r) => r.id !== row.id))
-    setConfirmDelink(null)
-  }
-  const linkAgain = (row: NexusRow) => {
-    // Keep the registration order.
-    onNexusRowsChange(allRows.filter((r) => r.id === row.id || nexusRows.some((n) => n.id === r.id)).map((r) => nexusRows.find((n) => n.id === r.id) ?? r))
-  }
   // Close the row menu on any outside click or Escape.
   useEffect(() => {
     if (!menuFor) return
@@ -1197,13 +1183,6 @@ function NexusSetupEditor({
                                 >
                                   Clear all forms
                                 </button>
-                                <button
-                                  role="menuitem"
-                                  onClick={() => setConfirmDelink(row)}
-                                  className="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                                >
-                                  Delink state
-                                </button>
                               </div>
                             )}
                           </div>
@@ -1212,19 +1191,6 @@ function NexusSetupEditor({
                     </div>
                   ))}
 
-                  {delinkedRows.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 pt-1 text-xs text-gray-500">
-                      <span>Delinked:</span>
-                      {delinkedRows.map((r) => (
-                        <span key={r.id} className="inline-flex items-center gap-1.5">
-                          {r.state}
-                          <button onClick={() => linkAgain(r)} className={LINK_SM}>
-                            Link again
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </section>
 
@@ -1300,29 +1266,6 @@ function NexusSetupEditor({
         </div>
       )}
 
-      {confirmDelink && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div role="alertdialog" aria-modal="true" aria-labelledby="delink-title" className="w-full max-w-md rounded-xl border border-gray-200 bg-white shadow-2xl">
-            <div className="px-6 pt-5 pb-4">
-              <h2 id="delink-title" className="text-base font-semibold text-gray-900">
-                Delink {confirmDelink.state}?
-              </h2>
-              <p className="mt-1.5 text-sm text-gray-600">
-                Avalara will stop filing returns for {confirmDelink.state}. The state stays in your tax registrations, and you can link it again
-                later. Changes apply when you save.
-              </p>
-            </div>
-            <div className="flex items-center justify-end gap-2 rounded-b-xl border-t border-gray-200 bg-gray-50 px-6 py-4">
-              <button onClick={() => setConfirmDelink(null)} className={BTN_SECONDARY}>
-                Cancel
-              </button>
-              <button onClick={() => delink(confirmDelink)} className={`${BTN_BASE} bg-red-600 px-4 text-white hover:bg-red-700`}>
-                Delink state
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
 
     </div>
@@ -2669,16 +2612,13 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
   const [nexusRows, setNexusRows] = useState<NexusRow[]>([])
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireAnswers | null>(null)
 
-  // States taken out of Direct Return Filing; they stay in Tax registrations.
-  const [delinkedCodes, setDelinkedCodes] = useState<string[]>([])
-  const allRegisteredRows: NexusRow[] = registrations.map((r) => ({
+  const registeredRows: NexusRow[] = registrations.map((r) => ({
     id: r.code,
     state: r.name,
     stateCode: r.code,
     forms: taxForms[r.code] ?? [],
     registeredOn: r.registeredOn,
   }))
-  const registeredRows = allRegisteredRows.filter((r) => !delinkedCodes.includes(r.stateCode))
   const setups: FilingSetup[] = registeredRows.length
     ? [{ id: 'registrations', savedAt: formsSavedAt, rows: registeredRows, questionnaire: savedQuestionnaire }]
     : []
@@ -2704,7 +2644,6 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
 
   const handleSaveForms = () => {
     setTaxForms((prev) => ({ ...prev, ...Object.fromEntries(nexusRows.map((r) => [r.stateCode, r.forms])) }))
-    setDelinkedCodes(registrations.map((r) => r.code).filter((code) => !nexusRows.some((row) => row.stateCode === code)))
     setSavedQuestionnaire(questionnaire)
     setFormsSavedAt(new Date())
     showToast('Tax forms saved')
@@ -2797,8 +2736,7 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
               appPage === 'editor' ? (
                 <NexusSetupEditor
                   editorMode="existing"
-                  allRows={allRegisteredRows}
-                  linkedAtOpen={registeredRows.map((r) => r.id)}
+                  savedRows={registeredRows}
                   nexusRows={nexusRows}
                   questionnaire={questionnaire}
                   onNexusRowsChange={setNexusRows}

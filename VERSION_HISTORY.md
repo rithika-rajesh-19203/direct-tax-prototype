@@ -41,6 +41,7 @@ This file tracks what has changed in the prototype and what is planned next.
 15. **Tax forms table grouped by state:** Tax forms by nexus is now a grouped table (Tax form · Description · Actions). Each state is a group row with its code, name, form count, registration date and **Edit tax forms** / **Add tax forms**; its forms are listed as rows beneath it. A state without forms shows "Needs forms" and a one-line empty row.
 16. **No bank details panel in the FPOA pop-up:** the copy-ready bank account details are gone, even when a bank account is already connected. The side panel only says to enter the account Avalara should debit and to use the same account in the Bank account step.
 17. **No new-account form in the bank pop-up:** the inline form (bank name, nickname, routing and account number, account type) is removed. **Add a new bank account** stays as a link, but does nothing in the prototype.
+18. **Delink state removed:** the ⋮ menu on each state card in Add tax forms now only has **Clear all forms**. The Delink confirmation, the "Delinked · Link again" line and the delinked-state tracking are gone; every registered state is always listed.
 
 ---
 
