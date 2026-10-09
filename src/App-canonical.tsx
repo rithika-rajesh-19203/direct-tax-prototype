@@ -1290,38 +1290,6 @@ function StatusPill({ tone, children }: { tone: 'success' | 'warning' | 'neutral
 
 const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-function DisableDirectTaxModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="disable-title"
-        aria-describedby="disable-desc"
-        className="w-full max-w-[420px] rounded-xl border border-gray-200 bg-white shadow-2xl"
-      >
-        <div className="px-6 pt-5 pb-4">
-          <h2 id="disable-title" className="text-base font-semibold text-gray-900">
-            Disable Direct Return Filing?
-          </h2>
-          <p id="disable-desc" className="mt-1.5 text-sm leading-5 text-gray-600">
-            Avalara will stop filing direct tax returns for your business, and your FPOA and tax form setups will be
-            removed. You can set it up again at any time.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 rounded-b-xl border-t border-gray-200 bg-gray-50 px-6 py-4">
-          <button onClick={onConfirm} className={`${BTN_BASE} px-4 bg-red-600 text-white hover:bg-red-700`}>
-            Disable
-          </button>
-          <button onClick={onCancel} className={BTN_SECONDARY}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // One-line setup summary (segmented progress, a link per open step) that expands to the step list.
 // Used on both the first page and the Direct Return Filing page.
 type StepAction = { label: string; onClick: () => void }
@@ -1502,7 +1470,6 @@ function DirectTaxActivePage({
   setups,
   onFpoaSign,
   onViewSetup,
-  onDisable,
   onManageRegistrations,
   setupDone,
   onMarkRegistrationsDone,
@@ -1521,7 +1488,6 @@ function DirectTaxActivePage({
   setups: FilingSetup[]
   onFpoaSign: () => void
   onViewSetup: (id: string) => void
-  onDisable: () => void
   onManageRegistrations: () => void
 }) {
   const [showBankModal, setShowBankModal] = useState(false)
@@ -1548,7 +1514,6 @@ function DirectTaxActivePage({
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
   }, [fpoaStatus, fpoaFrameMounted])
-  const [confirmDisable, setConfirmDisable] = useState(false)
 
   const signed = fpoaStatus === 'processing'
   // One table row per nexus card, across every saved setup.
@@ -1595,9 +1560,6 @@ function DirectTaxActivePage({
           </div>
           <p className="mt-0.5 text-xs text-gray-500">Avalara files your direct tax returns for each registered state.</p>
         </div>
-        <button onClick={() => setConfirmDisable(true)} className={`${BTN_GHOST} text-gray-600`}>
-          Disable
-        </button>
       </header>
 
       {/* Setup and authorization: first, and the focus until it's done; then one summary line */}
@@ -1846,15 +1808,6 @@ function DirectTaxActivePage({
         />
       )}
 
-      {confirmDisable && (
-        <DisableDirectTaxModal
-          onConfirm={() => {
-            setConfirmDisable(false)
-            onDisable()
-          }}
-          onCancel={() => setConfirmDisable(false)}
-        />
-      )}
     </div>
   )
 }
@@ -2676,15 +2629,6 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
     setAppPage('active')
   }
 
-  const handleDisable = () => {
-    setAppPage('overview')
-    setFpoaStatus('idle')
-    setFpoaSignedAt(null)
-    setBankAccount(null)
-    setTaxForms({})
-    setSavedQuestionnaire(null)
-  }
-
   const handleFpoaSign = () => {
     setFpoaStatus('signing')
     setTimeout(() => {
@@ -2753,7 +2697,6 @@ export default function AppCanonical({ headerSlot }: { headerSlot?: React.ReactN
                   setups={setups}
                   onFpoaSign={handleFpoaSign}
                   onViewSetup={openFormsEditor}
-                  onDisable={handleDisable}
                   onManageRegistrations={() => openTaxRegistration()}
                   setupDone={setupDone}
                   onMarkRegistrationsDone={() => setRegistrationsMarkedDone(true)}
